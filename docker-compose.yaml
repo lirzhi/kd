@@ -1,0 +1,47 @@
+version: '3.3'
+
+services:
+  redis:
+    image: redis:latest
+    container_name: redis
+    environment:
+      REDIS_PASSWORD: 1433223aa
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 1433223aa
+      MYSQL_DATABASE: rag
+      MYSQL_USER: huachuan
+      MYSQL_PASSWORD: 1433223aa
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  elasticsearch:
+    image: elasticsearch:8.6.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTIC_PASSWORD=1433223aa
+      - xpack.security.enabled=true
+      - xpack.monitoring.templates.enabled=true
+      - xpack.watcher.enabled=false
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+volumes:
+  redis_data:
+  mysql_data:
+  elasticsearch_data:

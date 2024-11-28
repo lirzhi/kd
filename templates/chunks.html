@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chunks</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .chunk {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chunks</h1>
+    {% if chunks %}
+        <ul>
+            {% for chunk in chunks %}
+                <li class="chunk">{{ chunk }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No chunks available.</p>
+    {% endif %}
+</body>
+</html>
