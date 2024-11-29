@@ -12,8 +12,7 @@
 #
 import re
 
-from utils.rag_tokenizer import num_tokens_from_string
-from utils.rag_tokenizer import find_codec
+from utils.rag_tokenizer import find_codec, num_tokens_from_string
 
 
 def get_text(fnm: str, binary=None) -> str:

@@ -14,6 +14,7 @@
 #  limitations under the License.
 #
 
+from json import encoder
 import logging
 import copy
 import datrie
@@ -36,6 +37,13 @@ def is_english(texts):
     if eng / len(texts) > 0.8:
         return True
     return False
+
+def num_tokens_from_string(string: str) -> int:
+    """Returns the number of tokens in a text string."""
+    try:
+        return len(encoder.encode(string))
+    except Exception:
+        return 0
 
 class RagTokenizer:
     def key_(self, line):

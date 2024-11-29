@@ -75,6 +75,7 @@ class ESConnection(DocStoreConnection):
 
     def createIdx(self, indexName: str, knowledgebaseId: str, vectorSize: int):
         if self.indexExist(indexName, knowledgebaseId):
+            logging.info(f"Index {indexName} already exists.")
             return True
         try:
             from elasticsearch.client import IndicesClient

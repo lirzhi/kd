@@ -133,4 +133,5 @@ class RAGFlowDocxParser:
             secs.append(("".join(runs_within_single_paragraph), p.style.name if hasattr(p.style, 'name') else '')) # then concat run.text as part of the paragraph
 
         tbls = [self.__extract_table_content(tb) for tb in self.doc.tables]
+        
         return secs, tbls
