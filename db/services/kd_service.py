@@ -2,6 +2,7 @@ from db.dbutils import singleton
 from db.dbutils.doc_store_conn import MatchTextExpr, OrderByExpr
 from db.dbutils.es_conn import ESConnection
 from db.dbutils.mysql_conn import MysqlConnection
+from db.dbutils.vector_db import Embedding, VectorDB
 
 
 @singleton
@@ -9,6 +10,8 @@ class KDService:
     def __init__(self):
         self.db_session = MysqlConnection().get_session()
         self.es_conn = ESConnection()
+        self.embedding = Embedding()
+        self.vector_db = VectorDB()
 
     def save_chunks_to_es(self, chunk, index_name, kd_id):
         self.es_conn.createIdx(index_name, kd_id, 64)
@@ -66,9 +69,21 @@ class KDService:
     def search_by_query_es(self, query):
         pass
 
-    def build_vector_index(self, index_name, query):
-        pass
+    def save_chunk_to_vector(self, chunks=[], db_name="test_collection"):
+        embedding_text_list = []
+        for chunk in chunks:
+            embedding_text_list.append(chunk["text"])
+    
+        vectors = self.embedding.convert_text_to_embedding(source_sentence=embedding_text_list)
+        for index, chunk in enumerate(chunks):
+            chunk["vector"] = vectors[index]
+        
+        self.vector_db.save(data=chunks)
+    
 
-    def search_by_vector(self, index_name, vector):
-        pass
+    def search_by_vector(self, query="", db_name="test_collection"):
+        query_text = query 
+        query_embedding = self.embedding.convert_text_to_embedding(source_sentence=[query_text])[0]
+        query_results_list = self.vector_db.search(query_embedding=[query_embedding])
+        return query_results_list
     

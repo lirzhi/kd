@@ -1,3 +1,5 @@
+
+import time
 from db.services.file_service import FileService
 
 
@@ -23,7 +25,7 @@ class ParserManager:
         for chunk in chunks:
             chunk = chunk
             chunk["doc_id"] = doc_info.doc_id
-            chunk["id"] = chunk["doc_id"] + str(chunk["chunk_id"])
+            chunk["id"] = int(time.time())
             chunk["classification"] = doc_info.classification
             chunk["affect_range"] = doc_info.affect_range
             final_chunks.append(chunk)

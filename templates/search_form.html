@@ -80,8 +80,7 @@
         {% if result %}
             {% for item in result %}
                 <div class="result-item">
-                    <h3>{{ item.title }}</h3>
-                    <p>{{ item.content }}</p>
+                    {{item}}
                 </div>
             {% endfor %}
         {% else %}

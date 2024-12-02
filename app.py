@@ -59,6 +59,10 @@ def add_to_kd(doc_id):
         flash(err_msg)
         return redirect(url_for('add_to_kd'))
     flash('文件已成功添加到es')
+
+    # 保存到vector数据库
+    
+    KDService().save_chunk_to_vector(chunks)
     return render_template('chunks.html', chunks=chunks)
    
 
@@ -68,7 +72,9 @@ def search_by_query():
     kb_ids = request.form.get('kb_ids')
     result = KDService().search_by_query(query, kb_ids)
     print(result)
-    return render_template('search_form.html', result=result)
+    result = KDService().search_by_vector(query)
+    print(result)
+    return render_template('search_form.html', result=result[0])
 
 @app.route('/')
 def index():
