@@ -8,7 +8,7 @@ from db.dbutils.es_conn import ESConnection
 from db.dbutils.mysql_conn import MysqlConnection
 from db.services.file_service import FileService
 from db.services.kd_service import KDService
-from utils.file_utils import rewrite_json_file
+from utils.file_util import rewrite_json_file
 from utils.parser.parser_manager import ParserManager
 
 app = Flask(__name__)

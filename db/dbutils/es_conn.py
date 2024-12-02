@@ -10,11 +10,11 @@ from elasticsearch_dsl import UpdateByQuery, Q, Search, Index
 from elastic_transport import ConnectionTimeout
 from db import settings
 from db.dbutils import singleton
-from utils.file_utils import get_project_base_directory
+from utils.file_util import get_project_base_directory
 import polars as pl
 from db.dbutils.doc_store_conn import DocStoreConnection, MatchExpr, OrderByExpr, MatchTextExpr, MatchDenseExpr, \
     FusionExpr
-from utils import rag_tokenizer
+from utils import text_util
 
 ATTEMPT_TIME = 2
 
@@ -438,7 +438,7 @@ class ESConnection(DocStoreConnection):
         for r in re.finditer(r" ([a-z_]+_l?tks)( like | ?= ?)'([^']+)'", sql):
             fld, v = r.group(1), r.group(3)
             match = " MATCH({}, '{}', 'operator=OR;minimum_should_match=30%') ".format(
-                fld, rag_tokenizer.fine_grained_tokenize(rag_tokenizer.tokenize(v)))
+                fld, text_util.fine_grained_tokenize(text_util.tokenize(v)))
             replaces.append(
                 ("{}{}'{}'".format(
                     r.group(1),

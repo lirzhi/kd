@@ -1,6 +1,8 @@
 import re
 import pymupdf4llm
 
+from utils.text_util import clean_text
+
 class PdfParser:
     
     def __call__(self, fnm):
@@ -22,8 +24,9 @@ class PdfParser:
             chunk = {}   
             chunk["chunk_id"] = index + 1
             chunk["image_paths"] = PdfParser.extract_image_paths(element)
-            chunk["text"] = element["text"]
+            chunk["text"] = clean_text(element["text"]) 
             chunk["size"] = size
+            chunk["page"] = element["metadata"]["page"]
             chunks.append(chunk)
         return chunks
 

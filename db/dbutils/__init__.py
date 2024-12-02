@@ -17,7 +17,7 @@
 import os
 import re
 import tiktoken
-from utils.file_utils import get_project_base_directory
+from utils.file_util import get_project_base_directory
 
 def singleton(cls, *args, **kw):
     instances = {}

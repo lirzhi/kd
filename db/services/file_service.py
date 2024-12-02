@@ -6,7 +6,7 @@ from sqlalchemy import text
 from db.dbutils import singleton
 from db.dbutils.mysql_conn import MysqlConnection
 from db import db_model as models
-from utils.file_utils import rewrite_json_file
+from utils.file_util import rewrite_json_file
 
 UPLOAD_FOLDER = 'data/uploads/'  # 设置文件上传的目标文件夹
 CHUNK_FOLDER = "data/parser/chunks/"  # 设置切分文件的目标文件夹
