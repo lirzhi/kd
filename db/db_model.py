@@ -11,7 +11,7 @@ class FileInfo(Base):
     classification = Column(String(256), nullable=False)
     affect_range = Column(String(256), nullable=False)
     is_chunked = Column(Boolean, default=False)
-    chunk_list = Column(String(1024), nullable=True)
+    chunk_size = Column(Integer, nullable=True)
     is_deleted = Column(Boolean, default=False)
     create_time = Column(String(256), nullable=False)
 

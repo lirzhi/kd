@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>搜索结果</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .search-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .search-box {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .search-button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .search-button:hover {
+            background-color: #0056b3;
+        }
+        .result-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .result-item {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .result-item h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .result-item p {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="search-container">
+        <form method="post" action="{{ url_for('search_by_query') }}">
+            <input type="text" name="query" class="search-box" placeholder="请输入搜索内容" required>
+            <select name="kb_ids" class="search-box">
+                <option value="介绍文件">介绍文件</option>
+                <option value="指导原则">指导原则</option>
+                <option value="法律法规">法律法规</option>
+                <!-- 添加更多选项 -->
+            </select>
+            <button type="submit" class="search-button">搜索</button>
+        </form>
+    </div>
+
+    <div class="result-container">
+        {% if result %}
+            {% for item in result %}
+                <div class="result-item">
+                    <h3>{{ item.title }}</h3>
+                    <p>{{ item.content }}</p>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>没有找到相关结果。</p>
+        {% endif %}
+    </div>
+</body>
+</html>

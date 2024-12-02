@@ -17,12 +17,13 @@ class PdfParser:
             dpi=300,
         )
         chunks = []
+        size = len(md_chunks)
         for index, element in enumerate(md_chunks):
             chunk = {}   
             chunk["chunk_id"] = index + 1
-
             chunk["image_paths"] = PdfParser.extract_image_paths(element)
             chunk["text"] = element["text"]
+            chunk["size"] = size
             chunks.append(chunk)
         return chunks
 

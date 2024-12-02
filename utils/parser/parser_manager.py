@@ -10,7 +10,7 @@ class ParserManager:
 
     @staticmethod
     def parse(doc_id):
-        doc_info = FileService.get_file_by_id(doc_id)
+        doc_info = FileService().get_file_by_id(doc_id)
         if doc_info is None:
             raise ValueError(f'No file found with doc_id {doc_id}')
         file_path = doc_info.file_path
@@ -23,6 +23,7 @@ class ParserManager:
         for chunk in chunks:
             chunk = chunk
             chunk["doc_id"] = doc_info.doc_id
+            chunk["id"] = chunk["doc_id"] + str(chunk["chunk_id"])
             chunk["classification"] = doc_info.classification
             chunk["affect_range"] = doc_info.affect_range
             final_chunks.append(chunk)

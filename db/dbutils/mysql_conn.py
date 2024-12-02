@@ -16,7 +16,7 @@ Base = declarative_base()
 @singleton
 class MysqlConnection:
     def __init__(self):
-        SQLALCHEMY_ENGINE_OPTIONS = {'pool_size': 40, 'max_overflow': 20}
+        SQLALCHEMY_ENGINE_OPTIONS = {'pool_size': MYSQL['pool_size'], 'max_overflow': MYSQL['max_overflow']}
         self.engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=False, **SQLALCHEMY_ENGINE_OPTIONS)
         Base.metadata.create_all(bind=self.engine)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)

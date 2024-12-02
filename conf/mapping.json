@@ -23,6 +23,9 @@
         },
         "affect_range": {
           "type": "keyword"
+        },
+        "image_paths": {
+          "type": "keyword"
         }
       }
     }
