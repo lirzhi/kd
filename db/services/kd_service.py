@@ -78,7 +78,7 @@ class KDService:
         for index, chunk in enumerate(chunks):
             chunk["vector"] = vectors[index]
         
-        self.vector_db.save(data=chunks)
+        return self.vector_db.save(data=chunks)
     
 
     def search_by_vector(self, query="", db_name="test_collection"):

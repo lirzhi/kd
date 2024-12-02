@@ -62,7 +62,8 @@ def add_to_kd(doc_id):
 
     # 保存到vector数据库
     
-    KDService().save_chunk_to_vector(chunks)
+    res = KDService().save_chunk_to_vector(chunks)
+    flash(f"{res['insert_count']}/{len(chunks)}个文档片段成功添加到向量数据库")
     return render_template('chunks.html', chunks=chunks)
    
 
