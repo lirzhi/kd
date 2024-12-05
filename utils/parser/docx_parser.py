@@ -36,6 +36,7 @@ class DocxParser:
                 # 更新当前chunk的起始位置
                 if current_chunk['start_pos'] is None:
                     current_chunk['start_pos'] = i
+                    current_chunk["chunk_id"] = i + 1
                 # 使用spacy进行句子分割
                 doc_text = self.nlp(paragraph_text)
                 for sent in doc_text.sents:
@@ -48,8 +49,9 @@ class DocxParser:
                         current_chunk = {
                             'text': sentence_text,
                             'tables': [],
-                            'images': [],
-                            'start_pos': i
+                            'image_paths': [],
+                            'start_pos': i,
+                            "chunk_id": i + 1
                         }
                         current_chunk_index += 1
                     else:
@@ -90,7 +92,7 @@ class DocxParser:
                 image_chunk_index = min((chunk['start_pos'], idx)
                                         for idx, chunk in enumerate(chunks)
                                         if chunk['start_pos'] is not None)[1]
-                chunks[image_chunk_index]['images'].append(image_path)
+                chunks[image_chunk_index]['image_paths'].append(image_path)
 
         return chunks
    

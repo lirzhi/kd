@@ -34,6 +34,7 @@ class PdfParser:
             chunk = {}   
             chunk["chunk_id"] = index + 1
             chunk["image_paths"] = self.extract_image_paths(element)
+            chunk["tables"] = []
             chunk["text"] = clean_text(element["text"]) 
             chunk["size"] = size
             chunk["page"] = element["metadata"]["page"]

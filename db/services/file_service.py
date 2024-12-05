@@ -9,7 +9,7 @@ from db import db_model as models
 from utils.file_util import ensure_dir_exists, rewrite_json_file
 
 UPLOAD_FOLDER = 'data/uploads/'  # 设置文件上传的目标文件夹
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'ppt', 'pptx', 'docx'}  # 允许的文件扩展名
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'ppt', 'pptx', 'docx', 'qa'}  # 允许的文件扩展名
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
@@ -34,9 +34,10 @@ class FileService:
         try:
             update_count1 = self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id).update({"is_chunked": True})
             update_count2 = self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id).update({"chunk_size": chunk_size})
-            self.db_session.commit()
+            
             # 检查更新操作是否成功执行
             if update_count1 > 0 and update_count2 > 0:
+                self.db_session.commit()
                 print("Records updated successfully.")
             else:
                 print("No records found or updated.")

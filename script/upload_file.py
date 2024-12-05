@@ -38,7 +38,7 @@ def upload_files_and_extract_doc_id(upload_dir, classification, affect_range):
                     print(f"文件 {file_name} 上传失败，状态码：{response.status_code}")
 
 # 使用示例
-upload_dir = '../data/raw_data/法律法规'
-classification = '法律法规'
+upload_dir = '../data/raw_data/qa数据'
+classification = 'qa数据'
 affect_range = '3.1.1'
 upload_files_and_extract_doc_id(upload_dir, classification, affect_range)
