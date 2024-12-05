@@ -7,6 +7,7 @@ from modelscope.pipelines import pipeline
 from modelscope.utils.constant import Tasks
 
 from db.dbutils import singleton
+from utils.file_util import ensure_dir_exists
 
 @singleton
 class Embedding:
@@ -34,10 +35,7 @@ class VectorDB:
         self.collection_name = collection_name
 
         # 自动创建文件夹
-        folder_path = os.path.dirname(db_path) + "/"
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
+        ensure_dir_exists(db_path)
         self.client = MilvusClient(self.db_path)
 
         # 自动创建collection
