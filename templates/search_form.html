@@ -66,26 +66,35 @@
     <div class="search-container">
         <form method="post" action="{{ url_for('search_by_query') }}">
             <input type="text" name="query" class="search-box" placeholder="请输入搜索内容" required>
-            <select name="kb_ids" class="search-box">
-                <option value="介绍文件">介绍文件</option>
-                <option value="指导原则">指导原则</option>
-                <option value="法律法规">法律法规</option>
-                <!-- 添加更多选项 -->
-            </select>
             <button type="submit" class="search-button">搜索</button>
         </form>
     </div>
 
     <div class="result-container">
         {% if result %}
-            {% for item in result %}
-                <div class="result-item">
-                    {{item}}
+            <div class="result-item">
+                <h3>参考文件:</h3>
+                <ul>
+                    {% for ref in result.reference %}
+                        <li>{{ ref.classification }}:{{ ref.file_name }}</li>
+                    {% endfor %}
+                </ul>
+                <h3>响应内容:</h3>
+                <div class="markdown-content">
+                    {{ result.response | safe }}
                 </div>
-            {% endfor %}
+                <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        var markdownContent = document.querySelector('.markdown-content');
+                        markdownContent.innerHTML = marked(markdownContent.textContent);
+                    });
+                </script>
+            </div>
         {% else %}
-            <p>没有找到相关结果。</p>
+            <div class="result-item">
+                <p>未找到相关内容</p>
+            </div>
         {% endif %}
-    </div>
 </body>
 </html>

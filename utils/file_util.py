@@ -223,3 +223,18 @@ def traversal_files(base):
         for f in fs:
             fullname = os.path.join(root, f)
             yield fullname
+
+def ensure_dir_exists(path):
+    """
+    确保给定路径的文件夹存在，如果不存在则创建它。
+    
+    参数:
+    path (str): 要检查的文件夹路径。
+    """
+    # 使用 os.path.exists() 检查路径是否存在
+    if not os.path.exists(path):
+        # 如果路径不存在，则使用 os.makedirs() 创建文件夹
+        os.makedirs(path)
+        print(f"文件夹 '{path}' 已创建。")
+    else:
+        print(f"文件夹 '{path}' 已存在。")

@@ -15,18 +15,7 @@
 #
 
 from json import encoder
-import logging
-import copy
-import datrie
-import math
-import os
 import re
-import string
-import sys
-from hanziconv import HanziConv
-from nltk import word_tokenize
-from nltk.stem import PorterStemmer, WordNetLemmatizer
-from utils.file_util import get_project_base_directory
 
 def is_english(texts):
     eng = 0
@@ -51,4 +40,13 @@ def clean_text(text):
     # 去除每行前后的空白
     cleaned_text = "\n".join([line.strip() for line in cleaned_text.split("\n") if line.strip() != ""])
     return cleaned_text
+
+def chunk_text(text, max_length=5000):
+    chunks = []
+    if len(text) > max_length:
+        for i in range(0, len(text), max_length):
+            chunks.append(text[i:i+max_length])
+    else:
+        chunks.append(text)
+    return chunks   
 

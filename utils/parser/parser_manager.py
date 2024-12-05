@@ -1,13 +1,16 @@
 
+import os
 import time
 from db.services.file_service import FileService
+from utils.file_util import ensure_dir_exists, rewrite_json_file
 
+CHUNK_BASE_PATH = "data/parser/"
 
 class ParserManager:
     parser_map = {}
 
     @staticmethod
-    def registaer_parser(parser_name, parser):
+    def register_parser(parser_name, parser):
        ParserManager.parser_map[parser_name] = parser
 
     @staticmethod
@@ -15,6 +18,8 @@ class ParserManager:
         doc_info = FileService().get_file_by_id(doc_id)
         if doc_info is None:
             raise ValueError(f'No file found with doc_id {doc_id}')
+        if doc_info.is_chunked == 1:
+            raise ValueError(f'File with doc_id {doc_id} has already been chunked')
         file_path = doc_info.file_path
         file_type = doc_info.file_type
         parser = ParserManager.parser_map.get(file_type)
@@ -29,6 +34,10 @@ class ParserManager:
             chunk["classification"] = doc_info.classification
             chunk["affect_range"] = doc_info.affect_range
             final_chunks.append(chunk)
+        file_name = doc_id + '.json'
+        dir_path=os.path.join(CHUNK_BASE_PATH, doc_info.file_type, "chunks")
+        ensure_dir_exists(dir_path)
+        rewrite_json_file(filepath=os.path.join(dir_path, file_name), json_data=final_chunks)
         return final_chunks
 
     

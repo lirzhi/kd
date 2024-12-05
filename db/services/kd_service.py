@@ -24,7 +24,7 @@ class KDService:
         return self.es_conn.delete(condition=condition, indexName=index_name, knowledgebaseId=kd_id)
         
 
-    def search_by_query(self, query, kb_ids):
+    def search_by_query(self, query, kb_ids=[]):
         # 构建查询条件
         condition = {
             "text": query  # 假设您想要查询文本字段中包含"example"的文档

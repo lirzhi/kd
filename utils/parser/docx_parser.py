@@ -1,137 +1,98 @@
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-#
-
 from docx import Document
-import re
-import pandas as pd
-from collections import Counter
-from utils import text_util
-from io import BytesIO
+import os
 
+import spacy
 
-class RAGFlowDocxParser:
+from db.dbutils import singleton
+from utils.file_util import ensure_dir_exists
 
-    def __extract_table_content(self, tb):
-        df = []
-        for row in tb.rows:
-            df.append([c.text for c in row.cells])
-        return self.__compose_table_content(pd.DataFrame(df))
+DOCX_IMAGE_PATH = 'data/parser/docx/images/'
+DOCX_TABLE_PATH = "data/parser/docx/tables/"
+@singleton
+class DocxParser:
+    def __init__(self):
+        ensure_dir_exists(DOCX_IMAGE_PATH)
+        ensure_dir_exists(DOCX_TABLE_PATH)
+        self.nlp = spacy.load("en_core_web_sm") # python -m spacy download en_core_web_sm
+   
+    def read_word_in_chunks(self, file_path, chunk_size):
+        doc = Document(file_path)
+        chunks = []
+        current_chunk = {
+            'text': '',
+            'tables': [],
+            'images': [],
+            'start_pos': None
+        }
+        current_chunk_index = 0
 
-    def __compose_table_content(self, df):
+        # 用于存储当前chunk的最后一个句子的起始位置
+        last_sentence_start = None
 
-        def blockType(b):
-            patt = [
-                ("^(20|19)[0-9]{2}[年/-][0-9]{1,2}[月/-][0-9]{1,2}日*$", "Dt"),
-                (r"^(20|19)[0-9]{2}年$", "Dt"),
-                (r"^(20|19)[0-9]{2}[年/-][0-9]{1,2}月*$", "Dt"),
-                ("^[0-9]{1,2}[月/-][0-9]{1,2}日*$", "Dt"),
-                (r"^第*[一二三四1-4]季度$", "Dt"),
-                (r"^(20|19)[0-9]{2}年*[一二三四1-4]季度$", "Dt"),
-                (r"^(20|19)[0-9]{2}[ABCDE]$", "DT"),
-                ("^[0-9.,+%/ -]+$", "Nu"),
-                (r"^[0-9A-Z/\._~-]+$", "Ca"),
-                (r"^[A-Z]*[a-z' -]+$", "En"),
-                (r"^[0-9.,+-]+[0-9A-Za-z/$￥%<>（）()' -]+$", "NE"),
-                (r"^.{1}$", "Sg")
-            ]
-            for p, n in patt:
-                if re.search(p, b):
-                    return n
-            tks = [t for t in text_util.tokenize(b).split(" ") if len(t) > 1]
-            if len(tks) > 3:
-                if len(tks) < 12:
-                    return "Tx"
-                else:
-                    return "Lx"
+        for i, paragraph in enumerate(doc.paragraphs):
+            # 当前段落的文本
+            paragraph_text = paragraph.text.strip()
+            if paragraph_text:  # 忽略空段落
+                # 更新当前chunk的起始位置
+                if current_chunk['start_pos'] is None:
+                    current_chunk['start_pos'] = i
+                # 使用spacy进行句子分割
+                doc_text = self.nlp(paragraph_text)
+                for sent in doc_text.sents:
+                    # 获取句子的文本
+                    sentence_text = sent.text.strip()
+                    # 检查是否达到chunk大小限制
+                    if len(current_chunk['text']) + len(sentence_text) > chunk_size:
+                        # 保存当前chunk并开始新的chunk
+                        chunks.append(current_chunk)
+                        current_chunk = {
+                            'text': sentence_text,
+                            'tables': [],
+                            'images': [],
+                            'start_pos': i
+                        }
+                        current_chunk_index += 1
+                    else:
+                        # 添加句子文本到当前chunk
+                        current_chunk['text'] += sentence_text + '\n'
+                        if last_sentence_start is None:
+                            last_sentence_start = doc_text[sent.start].idx
 
-            if len(tks) == 1 and text_util.tag(tks[0]) == "nr":
-                return "Nr"
+        # 添加最后一个chunk（如果有）
+        if current_chunk['text']:
+            chunks.append(current_chunk)
 
-            return "Ot"
+        # 处理表格和图片，分别保存
+        image_dir = os.path.join(DOCX_IMAGE_PATH)
+        if not os.path.exists(image_dir):
+            os.makedirs(image_dir)
 
-        if len(df) < 2:
-            return []
-        max_type = Counter([blockType(str(df.iloc[i, j])) for i in range(
-            1, len(df)) for j in range(len(df.iloc[i, :]))])
-        max_type = max(max_type.items(), key=lambda x: x[1])[0]
+        table_dir = os.path.join(DOCX_TABLE_PATH)
+        if not os.path.exists(table_dir):
+            os.makedirs(table_dir)
 
-        colnm = len(df.iloc[0, :])
-        hdrows = [0]  # header is not nessesarily appear in the first line
-        if max_type == "Nu":
-            for r in range(1, len(df)):
-                tys = Counter([blockType(str(df.iloc[r, j]))
-                              for j in range(len(df.iloc[r, :]))])
-                tys = max(tys.items(), key=lambda x: x[1])[0]
-                if tys != max_type:
-                    hdrows.append(r)
+        # 遍历文档中的表格和图片，将它们添加到相应的chunk中
+        for i, table in enumerate(doc.tables):
+            table_chunk_index = min((chunk['start_pos'], idx)
+                                    for idx, chunk in enumerate(chunks)
+                                    if chunk['start_pos'] is not None)[1]
+            chunks[table_chunk_index]['tables'].append({
+                'index': i,
+                'text': " ".join([cell.text for row in table.rows for cell in row.cells])
+            })
 
-        lines = []
-        for i in range(1, len(df)):
-            if i in hdrows:
-                continue
-            hr = [r - i for r in hdrows]
-            hr = [r for r in hr if r < 0]
-            t = len(hr) - 1
-            while t > 0:
-                if hr[t] - hr[t - 1] > 1:
-                    hr = hr[t:]
-                    break
-                t -= 1
-            headers = []
-            for j in range(len(df.iloc[i, :])):
-                t = []
-                for h in hr:
-                    x = str(df.iloc[i + h, j]).strip()
-                    if x in t:
-                        continue
-                    t.append(x)
-                t = ",".join(t)
-                if t:
-                    t += ": "
-                headers.append(t)
-            cells = []
-            for j in range(len(df.iloc[i, :])):
-                if not str(df.iloc[i, j]):
-                    continue
-                cells.append(headers[j] + str(df.iloc[i, j]))
-            lines.append(";".join(cells))
+        for i, inline_shape in enumerate(doc.inline_shapes):
+            if inline_shape.type == 3:  # 图片类型
+                image = inline_shape.image
+                image_path = os.path.join(image_dir, f'image_{i}.png')
+                with open(image_path, 'wb') as img_file:
+                    img_file.write(image)
+                image_chunk_index = min((chunk['start_pos'], idx)
+                                        for idx, chunk in enumerate(chunks)
+                                        if chunk['start_pos'] is not None)[1]
+                chunks[image_chunk_index]['images'].append(image_path)
 
-        if colnm > 3:
-            return lines
-        return ["\n".join(lines)]
-
-    def __call__(self, fnm, from_page=0, to_page=100000000):
-        self.doc = Document(fnm) if isinstance(
-            fnm, str) else Document(BytesIO(fnm))
-        pn = 0 # parsed page
-        secs = [] # parsed contents
-        for p in self.doc.paragraphs:
-            if pn > to_page:
-                break
-
-            runs_within_single_paragraph = [] # save runs within the range of pages
-            for run in p.runs:
-                if pn > to_page:
-                    break
-                if from_page <= pn < to_page and p.text.strip():
-                    runs_within_single_paragraph.append(run.text) # append run.text first
-
-                # wrap page break checker into a static method
-                if 'lastRenderedPageBreak' in run._element.xml:
-                    pn += 1
-
-            secs.append(("".join(runs_within_single_paragraph), p.style.name if hasattr(p.style, 'name') else '')) # then concat run.text as part of the paragraph
-
-        tbls = [self.__extract_table_content(tb) for tb in self.doc.tables]
-        
-        return secs, tbls
+        return chunks
+   
+    def __call__(self, path):
+        return self.read_word_in_chunks(path, 512)
