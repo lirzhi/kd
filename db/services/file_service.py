@@ -6,10 +6,9 @@ from sqlalchemy import text
 from db.dbutils import singleton
 from db.dbutils.mysql_conn import MysqlConnection
 from db import db_model as models
-from utils.file_util import rewrite_json_file
+from utils.file_util import ensure_dir_exists, rewrite_json_file
 
 UPLOAD_FOLDER = 'data/uploads/'  # 设置文件上传的目标文件夹
-CHUNK_FOLDER = "data/parser/chunks/"  # 设置切分文件的目标文件夹
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'ppt', 'pptx', 'docx'}  # 允许的文件扩展名
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -21,6 +20,7 @@ def allowed_file(filename):
 @singleton
 class FileService:
     def __init__(self):
+        ensure_dir_exists(UPLOAD_FOLDER)
         self.db_session = MysqlConnection().get_session()
 
     def get_file_by_cls(self, class_name):
@@ -104,8 +104,3 @@ class FileService:
                 return False, f'文件上传失败: {str(e)}'
             file.save(os.path.join(UPLOAD_FOLDER, filename))
             return True, doc_id
-         
-    def save_file_chunk(self, doc_id, chunk_data):
-        # 保存成json文件
-        file_name = doc_id + '.json'
-        rewrite_json_file(filepath=os.path.join(CHUNK_FOLDER, file_name), json_data=chunk_data)
