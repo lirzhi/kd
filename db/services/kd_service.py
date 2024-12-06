@@ -51,7 +51,7 @@ class KDService:
             knowledgebaseIds=kb_ids
         )
 
-    def get_chunk_by_id(self, chunk_id):
+    def get_chunk_by_id(self, doc_id, chunk_id):
         pass
 
     def get_chunks_by_doc_id(self, doc_id):

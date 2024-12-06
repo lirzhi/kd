@@ -32,15 +32,16 @@ class FileService:
     
     def update_file_chunk_by_id(self, doc_id, chunk_size):
         try:
+            self.db_session.begin()
             update_count1 = self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id).update({"is_chunked": True})
             update_count2 = self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id).update({"chunk_size": chunk_size})
             
             # 检查更新操作是否成功执行
             if update_count1 > 0 and update_count2 > 0:
-                self.db_session.commit()
-                print("Records updated successfully.")
+                logging.info("Records updated successfully.")
             else:
-                print("No records found or updated.")
+                logging.info("No records found or updated.")
+            self.db_session.commit()
         except Exception as e:
             self.db_session.rollback()
             logging.warning(f'{doc_id}文档chunk信息保存错误: {str(e)}')
@@ -83,6 +84,7 @@ class FileService:
             classification = meta_info['classification']
             affect_range = meta_info['affect_range']
             try:
+                self.db_session.begin()
                 self.db_session.execute(text(
                     "INSERT INTO file_info (doc_id, file_name, file_path, file_type, classification, affect_range, is_chunked, is_deleted, create_time) VALUES (:doc_id, :file_name, :file_path, :file_type, :classification, :affect_range, :is_chunked, :is_deleted, :create_time)"),
                     {
