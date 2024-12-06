@@ -76,6 +76,7 @@ def search_by_query():
     llm_context = {}
     llm_context["query"] = query
     llm_context["content"] = []
+    llm_context["reference"] = []
     llm_resp = {}
     reference_list = []
     for items in result:
@@ -88,6 +89,7 @@ def search_by_query():
             temp["classification"] = item["entity"]["classification"]
             temp["affect_range"] = item["entity"]["affect_range"]
             llm_context["content"].append(temp["content"])
+            llm_context["reference"].append(temp["file_name"])
             reference_file_info = {}
             reference_file_info["doc_id"] = item["entity"]["doc_id"]
             reference_file_info["file_name"] = file_info.file_name

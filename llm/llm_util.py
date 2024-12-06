@@ -1,7 +1,9 @@
 import json
 from multiprocessing import Pool
+import re
 import time
 import requests
+import xmltodict
 from . import env
 
 def ask_llm(content="", mode="qwen"):
@@ -52,4 +54,33 @@ def ask_llm(content="", mode="qwen"):
 
 def ask_llm_by_prompt_file(file_name, data="", mode="qwen"):
     template = env.get_template(file_name)
-    return ask_llm(template.render(data=data), mode)
+    answer = ask_llm(template.render(data=data), mode)
+    xml_str = extract_xml_str(answer)
+    if xml_str:
+            xml_str = xml_str.replace(r"\n", "")  # 有时模型输出的xml会有很多换行符号，需要去掉
+            xml_str = xml_str.replace("&", " ")
+            data = convert_xml_to_dict(xml_str)
+            if data:
+                return data
+    return None
+
+
+def convert_xml_to_dict(xml_str):
+    xml_str = "<output>" + xml_str + "</output>"  # 需要加上root标签以转dict
+    # 尝试转为json
+    try:
+        xml_dict = xmltodict.parse(xml_str)
+    except:
+        return False
+    # 去掉root节点
+    xml_dict = xml_dict[list(xml_dict.keys())[0]]
+    return xml_dict
+
+
+def extract_xml_str(answer):
+    # 尝试读取出xml的字符串，output标签为统一的标准根节点，不同的prompt都要输出这个
+    pattern = r"<output>(.*?)</output>"
+    matches = re.findall(pattern, answer, re.DOTALL)
+    if len(matches) != 1:
+        return False
+    return matches[0]

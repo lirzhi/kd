@@ -73,16 +73,18 @@
     <div class="result-container">
         {% if result %}
             <div class="result-item">
-                <h3>参考文件:</h3>
+                <h3>响应内容:</h3>
+                <div class="markdown-content">
+                    {{ result.response | safe }}
+                </div>
+
+                <br>
+                <h3>相关文件:</h3>
                 <ul>
                     {% for ref in result.reference %}
                         <li>{{ ref.classification }}:{{ ref.file_name }}</li>
                     {% endfor %}
                 </ul>
-                <h3>响应内容:</h3>
-                <div class="markdown-content">
-                    {{ result.response | safe }}
-                </div>
                 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
                 <script>
                     document.addEventListener("DOMContentLoaded", function() {
