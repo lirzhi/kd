@@ -86,4 +86,3 @@ class KDService:
         query_embedding = self.embedding.convert_text_to_embedding(source_sentence=[query_text])[0]
         query_results_list = self.vector_db.search(query_embedding=[query_embedding])
         return query_results_list
-    
