@@ -1,4 +1,5 @@
 
+import logging
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -20,6 +21,7 @@ class MysqlConnection:
         self.engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=False, **SQLALCHEMY_ENGINE_OPTIONS)
         Base.metadata.create_all(bind=self.engine)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+        print("MysqlConnection init")
 
     def get_session(self):
         return self.SessionLocal()

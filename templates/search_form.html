@@ -60,43 +60,68 @@
         .result-item p {
             color: #666;
         }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            border-bottom: 1px dotted black;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: black;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 1;
+            bottom: 100%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
     <div class="search-container">
-        <form method="post" action="{{ url_for('search_by_query') }}">
+        <form method="post" action="/search_by_query">
             <input type="text" name="query" class="search-box" placeholder="请输入搜索内容" required>
             <button type="submit" class="search-button">搜索</button>
         </form>
     </div>
 
     <div class="result-container">
-        {% if result %}
-            <div class="result-item">
-                <h3>响应内容:</h3>
-                <div class="markdown-content">
-                    {{ result.response | safe }}
-                </div>
+        <div class="result-item">
+            <h3>响应内容:</h3>
+            <div class="markdown-content" id="markdownContent"></div>
+        </div>
+    </div>
 
-                <br>
-                <h3>相关文件:</h3>
-                <ul>
-                    {% for ref in result.reference %}
-                        <li>{{ ref.classification }}:{{ ref.file_name }}</li>
-                    {% endfor %}
-                </ul>
-                <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-                <script>
-                    document.addEventListener("DOMContentLoaded", function() {
-                        var markdownContent = document.querySelector('.markdown-content');
-                        markdownContent.innerHTML = marked(markdownContent.textContent);
-                    });
-                </script>
-            </div>
-        {% else %}
-            <div class="result-item">
-                <p>未找到相关内容</p>
-            </div>
-        {% endif %}
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // 假设从后端接收到的 JSON 字符串存储在 resultResponse 变量中
+            var resultResponse = `{{ result.response | tojson | safe }}`; // 这里需要从后端获取实际的 JSON 字符串
+            var response;
+            try {
+                response = JSON.parse(resultResponse);
+            } catch (e) {
+                console.error('解析 JSON 字符串出错:', e);
+                return;
+            }
+
+            // 将所有 content 连接起来
+            var contents = response.response.map(function(item, index) {
+                return '<span class="tooltip">' + item.content + '<span class="tooltiptext">' + item.reference + '</span></span>';
+            }).join('<br>');
+
+            var markdownContent = document.getElementById('markdownContent');
+            markdownContent.innerHTML = contents;
+        });
+    </script>
 </body>
 </html>
