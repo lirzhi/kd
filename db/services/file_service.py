@@ -8,12 +8,12 @@ from db.dbutils.mysql_conn import MysqlConnection
 from db import db_model as models
 from utils.file_util import ensure_dir_exists, rewrite_json_file
 
-UPLOAD_FOLDER = 'data/uploads/'  # 设置文件上传的目标文件夹
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'ppt', 'pptx', 'docx', 'qa'}  # 允许的文件扩展名
+UPLOAD_FOLDER = 'data/uploads/'  # Set the target folder for file uploads
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'ppt', 'pptx', 'docx', 'qa'}  # Allowed file extensions
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
-    """检查文件扩展名是否被允许"""
+    """Check if the file extension is allowed"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -27,53 +27,69 @@ class FileService:
         pass
     
     def get_file_by_id(self, doc_id):
-        result = self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id).first()
-        return result
+        try:
+            return self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id).first()
+        finally:
+            self.db_session.close()
     
     def update_file_chunk_by_id(self, doc_id, chunk_size):
         try:
             self.db_session.begin()
-            update_count1 = self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id).update({"is_chunked": True})
-            update_count2 = self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id).update({"chunk_size": chunk_size})
-            
-            # 检查更新操作是否成功执行
-            if update_count1 > 0 and update_count2 > 0:
-                logging.info("Records updated successfully.")
+            update_count = self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id) \
+            .update({"is_chunked": True, "chunk_size": chunk_size})
+            self.db_session.commit()
+            # Check if the update operation was successful
+            if update_count > 0:
+                logging.info("Document chunk information saved successfully.")
+                return True, f'Document {doc_id} chunk information saved successfully'
             else:
                 logging.info("No records found or updated.")
-            self.db_session.commit()
         except Exception as e:
             self.db_session.rollback()
-            logging.warning(f'{doc_id}文档chunk信息保存错误: {str(e)}')
-            return False, f'{doc_id}文档chunk信息保存错误: {str(e)}'
-        return True, f'{doc_id}文档chunk信息保存成功'
+            logging.warning(f'Error saving chunk information for document {doc_id}: {str(e)}')
+            return False, f'Error saving chunk information for document {doc_id}: {str(e)}'
+        finally:
+            self.db_session.close()
+        return True, f'Document {doc_id} chunk information saved successfully'
 
     def get_file_by_path(self, file_path):
-        return self.db_session.query(models.FileInfo).filter_by(file_path=file_path).first()
+        try:
+            return self.db_session.query(models.FileInfo).filter_by(file_path=file_path).first()
+        finally:
+            self.db_session.close()
 
     def get_file_by_name(self, file_name):
-        return self.db_session.query(models.FileInfo).filter_by(file_name=file_name).all()
+        try:
+            return self.db_session.query(models.FileInfo).filter_by(file_name=file_name).all()
+        finally:
+            self.db_session.close()
 
     def get_file_by_type(self, file_type):
-        return self.db_session.query(models.FileInfo).filter_by(file_type=file_type).all()
+        try:
+            return self.db_session.query(models.FileInfo).filter_by(file_type=file_type).all()
+        finally:
+            self.db_session.close()
 
     def get_file_by_tag(self, tag):
         pass
 
     def get_file_by_chunk(self, chunk):
-        return self.db_session.query(models.FileInfo).filter_by(doc_id=chunk["doc_id"]).first()
+        try:
+            return self.db_session.query(models.FileInfo).filter_by(doc_id=chunk["doc_id"]).first()
+        finally:
+            self.db_session.close()
 
     def save_file(self, file, meta_info = {}):
          if not allowed_file(file.filename):
-            logging.warning('文件类型不被允许')
-            return False , '文件类型不被允许'
+            logging.warning('File type not allowed')
+            return False , 'File type not allowed'
          if file and allowed_file(file.filename):
             filename = file.filename
             file_type = filename.rsplit('.', 1)[1].lower()
-            # 检查文件是否已经存在
+            # Check if the file already exists
             if os.path.exists(os.path.join(UPLOAD_FOLDER, filename)):
-               logging.warning(f'文件 {filename} 已存在！')
-               return False, f'文件 {filename} 已存在！'
+               logging.warning(f'File {filename} already exists!')
+               return False, f'File {filename} already exists!'
             random_uuid = uuid.uuid4()
             doc_id = str(random_uuid).replace('-', '')[:16]
             create_time = datetime.now()
@@ -100,10 +116,12 @@ class FileService:
                     }
                 )
                 self.db_session.commit()
-                logging.info(f'文件 {filename} 保存成功')
+                logging.info(f'File {filename} saved successfully')
             except Exception as e:
                 self.db_session.rollback()
-                logging.warning(f'文件上传失败: {str(e)}')
-                return False, f'文件上传失败: {str(e)}'
+                logging.warning(f'File upload failed: {str(e)}')
+                return False, f'File upload failed: {str(e)}'
+            finally:
+                self.db_session.close()
             file.save(os.path.join(UPLOAD_FOLDER, filename))
             return True, doc_id

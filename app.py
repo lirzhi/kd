@@ -9,63 +9,61 @@ from utils.common_util import ResponseMessage
 from utils.file_util import rewrite_json_file
 from utils.parser.parser_manager import ParserManager
 
-
-
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'  # 用于保护应用免受跨站请求伪造攻击
+app.config['SECRET_KEY'] = 'your_secret_key'  # Used to protect the application from cross-site request forgery attacks
+
 @app.route('/upload_file', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
-        # 检查是否有文件在请求中
+        # Check if the request contains a file
         if 'file' not in request.files:
-            logging.error('没有文件部分')
-            return ResponseMessage(400, f'文件提交不存在', None).to_json()
+            logging.error('No file part')
+            return ResponseMessage(400, 'No file part', None).to_json()
         file = request.files['file']
-        # 如果用户没有选择文件，浏览器可能会提交一个没有文件名的空部分
+        # If the user does not select a file, the browser may submit an empty part without a filename
         if file.filename == '':
-            flash('没有选择文件')
-            return ResponseMessage(400, f'未选择文件', None).to_json()
+            flash('No selected file')
+            return ResponseMessage(400, 'No selected file', None).to_json()
         meta_info = {
             "classification": request.form.get('classification'),
             "affect_range": request.form.get('affect_range'),
         }
         flag, info = FileService().save_file(file, meta_info)
-        if flag == False:
+        if not flag:
             logging.warning(info)
             return ResponseMessage(400, info, None).to_json()
-        flash(f'文件 {file.filename} 已上传成功！doc_id: {info}')
-        return ResponseMessage(200, f'文件 {file.filename} 已上传成功！doc_id: {info}', {"file_name": file.filename, "doc_id": info}).to_json()
+        flash(f'File {file.filename} uploaded successfully! doc_id: {info}')
+        return ResponseMessage(200, f'File {file.filename} uploaded successfully! doc_id: {info}', {"file_name": file.filename, "doc_id": info}).to_json()
     return render_template('upload.html')
 
 @app.route('/add_to_kd/<doc_id>', methods=['GET','POST'])
 def add_to_kd(doc_id):
-    # chunk切分
+    # Chunk splitting
     try:
         chunks = ParserManager.parse(doc_id)
     except Exception as e:
-        logging.error(f'文件未能成功chunk: {str(e)}')
-        return ResponseMessage(400, f'文件未能成功chunk: {str(e)}', None).to_json()
+        logging.error(f'Failed to chunk file: {str(e)}')
+        return ResponseMessage(400, f'Failed to chunk file: {str(e)}', None).to_json()
     if not chunks:
-        logging.warning('文件切分失败')
-        return ResponseMessage(400, f'文件chunk_size为0, 请检查文件内容是否存在', None).to_json()
-    # 保存chunk信息到mysql数据库
+        logging.warning('File chunking failed')
+        return ResponseMessage(400, 'File chunk size is 0, please check if the file content exists', None).to_json()
+    # Save chunk information to MySQL database
     flag, msg = FileService().update_file_chunk_by_id(doc_id, len(chunks))
     flash(msg)
-    if flag == False:
+    if not flag:
         return ResponseMessage(400, msg, None).to_json()
     
-    # 保存到es数据库
+    # Save to Elasticsearch database
     err_msg = KDService().save_chunks_to_es(chunks, "knowledge_index", chunks[0]["classification"])
     if err_msg:
         flash(err_msg)
         return ResponseMessage(400, err_msg, None).to_json()
-    logging.info(f'文件{doc_id}已成功添加到es')
+    logging.info(f'File {doc_id} successfully added to Elasticsearch')
 
-    # 保存到vector数据库
+    # Save to vector database
     res = KDService().save_chunk_to_vector(chunks)
-    logging.info(f"{res['insert_count']}/{len(chunks)}个文档片段成功添加到向量数据库")
-    return ResponseMessage(200, f'文件{doc_id}成功添加到知识库', chunks).to_json()
-   
+    logging.info(f"{res['insert_count']}/{len(chunks)} document fragments successfully added to vector database")
+    return ResponseMessage(200, f'File {doc_id} successfully added to knowledge base', chunks).to_json()
 
 @app.route('/search_by_query', methods=['GET','POST'])
 def search_by_query():
@@ -109,7 +107,6 @@ def index():
 @app.route('/search_by_classification', methods=['GET','POST'])
 def search_by_classification():
     pass
-
 
 if __name__ == '__main__':
     app.run(debug=True)
