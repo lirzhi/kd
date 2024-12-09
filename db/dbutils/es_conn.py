@@ -108,106 +108,26 @@ class ESConnection(DocStoreConnection):
     CRUD operations
     """
 
-    def search(self, selectFields: list[str], highlightFields: list[str], condition: dict, matchExprs: list[MatchExpr],
-               orderBy: OrderByExpr, offset: int, limit: int, indexNames: str | list[str],
-               knowledgebaseIds: list[str]) -> list[dict] | pl.DataFrame:
-        """
-        Refers to https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html
-        """
-        if isinstance(indexNames, str):
-            indexNames = indexNames.split(",")
-        assert isinstance(indexNames, list) and len(indexNames) > 0
-        assert "_id" not in condition
-
-        bqry = Q("bool", must=[])
-        condition["kb_id"] = knowledgebaseIds
-        for k, v in condition.items():
-            if k == "available_int":
-                if v == 0:
-                    bqry.filter.append(Q("range", available_int={"lt": 1}))
-                else:
-                    bqry.filter.append(
-                        Q("bool", must_not=Q("range", available_int={"lt": 1})))
-                continue
-            if not v: continue
-            if isinstance(v, list):
-                bqry.filter.append(Q("terms", **{k: v}))
-            elif isinstance(v, str) or isinstance(v, int):
-                bqry.filter.append(Q("term", **{k: v}))
-            else:
-                raise Exception(
-                    f"Condition `{str(k)}={str(v)}` value type is {str(type(v))}, expected to be int, str or list.")
-
-        s = Search()
-        vector_similarity_weight = 0.5
-        for m in matchExprs:
-            if isinstance(m, FusionExpr) and m.method == "weighted_sum" and "weights" in m.fusion_params:
-                assert len(matchExprs) == 3 and isinstance(matchExprs[0], MatchTextExpr) and isinstance(matchExprs[1],
-                                                                                                        MatchDenseExpr) and isinstance(
-                    matchExprs[2], FusionExpr)
-                weights = m.fusion_params["weights"]
-                vector_similarity_weight = float(weights.split(",")[1])
-        for m in matchExprs:
-            if isinstance(m, MatchTextExpr):
-                minimum_should_match = "0%"
-                if "minimum_should_match" in m.extra_options:
-                    minimum_should_match = str(int(m.extra_options["minimum_should_match"] * 100)) + "%"
-                bqry.must.append(Q("query_string", fields=m.fields,
-                                   type="best_fields", query=m.matching_text,
-                                   minimum_should_match=minimum_should_match,
-                                   boost=1))
-                bqry.boost = 1.0 - vector_similarity_weight
-
-            elif isinstance(m, MatchDenseExpr):
-                assert (bqry is not None)
-                similarity = 0.0
-                if "similarity" in m.extra_options:
-                    similarity = m.extra_options["similarity"]
-                s = s.knn(m.vector_column_name,
-                          m.topn,
-                          m.topn * 2,
-                          query_vector=list(m.embedding_data),
-                          filter=bqry.to_dict(),
-                          similarity=similarity,
-                          )
-
-        if bqry:
-            s = s.query(bqry)
-        for field in highlightFields:
-            s = s.highlight(field)
-
-        if orderBy:
-            orders = list()
-            for field, order in orderBy.fields:
-                order = "asc" if order == 0 else "desc"
-                orders.append({field: {"order": order, "unmapped_type": "float",
-                                       "mode": "avg", "numeric_type": "double"}})
-            s = s.sort(*orders)
-
-        if limit > 0:
-            s = s[offset:limit]
-        q = s.to_dict()
-        logging.debug(f"ESConnection.search {str(indexNames)} query: " + json.dumps(q))
-
-        for i in range(ATTEMPT_TIME):
-            try:
-                res = self.es.search(index=indexNames,
-                                     body=q,
-                                     timeout="600s",
-                                     # search_type="dfs_query_then_fetch",
-                                     track_total_hits=True,
-                                     _source=True)
-                if str(res.get("timed_out", "")).lower() == "true":
-                    raise Exception("Es Timeout.")
-                logging.debug(f"ESConnection.search {str(indexNames)} res: " + str(res))
-                return res
-            except Exception as e:
-                logging.exception(f"ESConnection.search {str(indexNames)} query: " + str(q))
-                if str(e).find("Timeout") > 0:
-                    continue
-                raise e
-        logging.error("ESConnection.search timeout for 3 times!")
-        raise Exception("ESConnection.search timeout.")
+    # 执行查询
+    def search(self, condition,indexNames):
+        query = {
+        "query": {
+            "match": condition  # 假设您想要查询文本字段中包含condition中指定文本的文档
+        }
+    }
+        response = self.es.search(index=indexNames, body=query)
+        # 检查响应中是否有结果，并限制结果数量为6
+        hits = response['hits']['hits'][:6] if response['hits']['hits'] else []
+        
+        # 提取分数和_source，并存入结果列表
+        results = []
+        for hit in hits:
+            result = {
+                '_source': hit['_source']
+            }
+            results.append(result)
+        
+        return results
 
     def get(self, chunkId: str, indexName: str, knowledgebaseIds: list[str]) -> dict | None:
         for i in range(ATTEMPT_TIME):

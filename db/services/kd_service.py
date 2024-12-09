@@ -29,27 +29,31 @@ class KDService:
         condition = {
             "text": query  # 假设您想要查询文本字段中包含"example"的文档
         }
-
-        match_expr = MatchTextExpr(
-            fields=["text"],
-            matching_text=query,
-            topn=10,
-            extra_options={}
-        )
-        order_by_expr = OrderByExpr()
-        order_by_expr.desc("classification")
-        
         return self.es_conn.search(
-            selectFields=["chunk_id", "doc_id", "text", "classification", "affect_range", "index"],
-            highlightFields=["text"],
             condition=condition,
-            matchExprs=[match_expr],
-            orderBy=order_by_expr,
-            offset=0,
-            limit=10,
             indexNames="knowledge_index",
-            knowledgebaseIds=kb_ids
         )
+
+        # match_expr = MatchTextExpr(
+        #     fields=["text"],
+        #     matching_text=query,
+        #     topn=10,
+        #     extra_options={}
+        # )
+        # order_by_expr = OrderByExpr()
+        # order_by_expr.desc("classification")
+        
+        # return self.es_conn.search(
+        #     selectFields=["chunk_id", "doc_id", "text", "classification", "affect_range", "index"],
+        #     highlightFields=["text"],
+        #     condition=condition,
+        #     matchExprs=[match_expr],
+        #     orderBy=order_by_expr,
+        #     offset=0,
+        #     limit=10,
+        #     indexNames="knowledge_index",
+        #     knowledgebaseIds=kb_ids
+        # )
 
     def get_chunk_by_id(self, doc_id, chunk_id):
         pass
