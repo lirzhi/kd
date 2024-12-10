@@ -71,6 +71,14 @@ class KDService:
         pass
 
     def search_by_query_es(self, query):
+        # 构建查询条件
+        condition = {
+            "text": query  # 假设您想要查询文本字段中包含"example"的文档
+        }
+        return self.es_conn.search(
+            condition=condition,
+            indexNames="knowledge_index",
+        )
         pass
 
     def save_chunk_to_vector(self, chunks=[], db_name="test_collection"):

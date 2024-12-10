@@ -109,21 +109,26 @@ class ESConnection(DocStoreConnection):
     """
 
     # 执行查询
-    def search(self, condition,indexNames):
+    def search(self, condition, indexNames):
         query = {
-        "query": {
-            "match": condition  # 假设您想要查询文本字段中包含condition中指定文本的文档
+            "query": {
+                "match": condition  # 假设您想要查询文本字段中包含condition中指定文本的文档
+            }
         }
-    }
         response = self.es.search(index=indexNames, body=query)
         # 检查响应中是否有结果，并限制结果数量为6
         hits = response['hits']['hits'][:6] if response['hits']['hits'] else []
         
-        # 提取分数和_source，并存入结果列表
+        # 提取指定字段，并存入结果列表
         results = []
         for hit in hits:
             result = {
-                '_source': hit['_source']
+                'doc_id': hit['_source'].get('doc_id'),  # 获取doc_id
+                'text': hit['_source'].get('text'),      # 获取text
+                'classification': hit['_source'].get('classification'),  # 获取classification
+                'affect_range': hit['_source'].get('affect_range'),      # 获取affect_range
+                'index': hit['_index'],  # 获取索引名称
+                'page': hit['_source'].get('page')  # 获取page
             }
             results.append(result)
         
