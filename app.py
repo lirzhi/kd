@@ -11,7 +11,7 @@ from utils.parser.parser_manager import ParserManager
 
 ensure_dir_exists('log')
 logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s',
-                    level=logging.DEBUG,
+                    level=logging.INFO,
                     filename='log/server.log',
                     filemode='a')
 app = Flask(__name__)

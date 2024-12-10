@@ -13,7 +13,7 @@ from starlette.responses import StreamingResponse
 
 os.makedirs("log", exist_ok=True)
 logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s',
-                    level=logging.DEBUG,
+                    level=logging.INFO,
                     filename='log/llm_server.log',
                     filemode='a')
 app = FastAPI()
