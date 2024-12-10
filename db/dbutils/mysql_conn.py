@@ -10,7 +10,6 @@ from db.dbutils import singleton
 
 
 SQLALCHEMY_DATABASE_URL = f'mysql+pymysql://{MYSQL["user"]}:{MYSQL["password"]}@{MYSQL["host"]}:{MYSQL["port"]}/{MYSQL["database"]}'
-print("database: ", SQLALCHEMY_DATABASE_URL)
 
 Base = declarative_base()
 
@@ -21,7 +20,7 @@ class MysqlConnection:
         self.engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=False, pool_pre_ping=True, **SQLALCHEMY_ENGINE_OPTIONS)
         Base.metadata.create_all(bind=self.engine)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-        print("MysqlConnection init")
+        logging.info(f"MysqlConnection init:{SQLALCHEMY_DATABASE_URL}")
 
     def get_session(self):
         return self.SessionLocal()

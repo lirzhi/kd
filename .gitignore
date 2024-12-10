@@ -162,6 +162,7 @@ cython_debug/
 #.idea/
 
 data/
+log/
 */log/
 llm/temp/key/
 .DS_Store

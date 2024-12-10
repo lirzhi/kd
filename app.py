@@ -6,9 +6,14 @@ from db.services.file_service import FileService
 from db.services.kd_service import KDService
 from llm.llm_util import ask_llm_by_prompt_file
 from utils.common_util import ResponseMessage
-from utils.file_util import rewrite_json_file
+from utils.file_util import ensure_dir_exists, rewrite_json_file
 from utils.parser.parser_manager import ParserManager
 
+ensure_dir_exists('log')
+logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s',
+                    level=logging.DEBUG,
+                    filename='log/server.log',
+                    filemode='a')
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Used to protect the application from cross-site request forgery attacks
 

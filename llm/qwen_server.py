@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import dashscope
 import json
 import os
@@ -11,7 +12,10 @@ from datetime import datetime
 from starlette.responses import StreamingResponse
 
 os.makedirs("log", exist_ok=True)
-
+logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s',
+                    level=logging.DEBUG,
+                    filename='log/llm_server.log',
+                    filemode='a')
 app = FastAPI()
 
 
@@ -56,15 +60,10 @@ async def chat_with_model(chat_history: ChatHistory):
             answer = "timeout error"
         else:
             answer = response.choices[0].message.content
-        result = {"request": chat_history.messages, "response": str(response)}
-        log_filename = f"log/{datetime.now()}.json"
-        save_json(log_filename, result)
+        logging.info(f"request: {chat_history.messages}, response: {str(response)}")
     except:
         answer = "question error"
-        result = {"request": chat_history.messages, "response": "问题或回答中出现了违禁词"}
-        log_filename = f"log/{datetime.now()}-not-allow.json"
-        save_json(log_filename, result)
-
+        logging.warning(f"request: {chat_history.messages}, response: 问题或回答中出现了违禁词")
     return answer
 
 

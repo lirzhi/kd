@@ -26,10 +26,7 @@ def singleton(cls, *args, **kw):
     def _singleton():
         key = str(cls) + str(os.getpid())
         if key not in instances:
-            print(f"Creating singleton instance for {cls}")
             instances[key] = cls(*args, **kw)
-        else:
-            print(f"Returning singleton instance for {cls}")
         return instances[key]
 
     return _singleton

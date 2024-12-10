@@ -235,6 +235,3 @@ def ensure_dir_exists(path):
     if not os.path.exists(path):
         # 如果路径不存在，则使用 os.makedirs() 创建文件夹
         os.makedirs(path)
-        print(f"文件夹 '{path}' 已创建。")
-    else:
-        print(f"文件夹 '{path}' 已存在。")
