@@ -2,6 +2,7 @@
 import os
 import time
 from db.services.file_service import FileService
+from mutil_agents.agents.utils.llm_util import ask_llm_by_prompt_file
 from utils.file_util import ensure_dir_exists, rewrite_json_file
 
 CHUNK_BASE_PATH = "data/parser/"
@@ -33,9 +34,16 @@ class ParserManager:
             chunk["id"] = int(time.time())
             chunk["classification"] = doc_info.classification
             chunk["affect_range"] = doc_info.affect_range
+            ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/data_format_prompt.j2", chunk)
+            if ans is not None:
+                chunk["text"] = ans["response"]["text"]
+                chunk["summary"] = ans["response"]["summary"]
+                chunk["keywords"] = ans["response"]["keywords"]
+                chunk["query"] = ans["response"]["query"]
             final_chunks.append(chunk)
-        file_name = doc_id + '.json'
-        dir_path=os.path.join(CHUNK_BASE_PATH, doc_info.file_type, "chunks")
+        file_name = doc_info.file_name + '.json'
+
+        dir_path=os.path.join(CHUNK_BASE_PATH, doc_info.file_type, doc_info.classification, "chunks")
         ensure_dir_exists(dir_path)
         rewrite_json_file(filepath=os.path.join(dir_path, file_name), json_data=final_chunks)
         return final_chunks

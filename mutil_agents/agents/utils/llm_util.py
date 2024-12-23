@@ -4,7 +4,7 @@ import re
 import time
 import requests
 import xmltodict
-from . import env
+from ... import env
 
 def ask_llm(content="", mode="qwen"):
     if mode == "ollama":

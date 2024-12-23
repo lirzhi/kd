@@ -57,15 +57,13 @@ class VectorDB:
     ):
         if params is None:
             params = {}
-        res = self.client.search(
+        result = self.client.search(
             collection_name=self.collection_name,
             data=query_embedding,
             limit=limit,
             search_params={"metric_type": metric_type, "params": params},
             output_fields=["doc_id", "text", "classification", "affect_range", "index", "page"],
         )
-        result = json.dumps(res, indent=4)
-        result = json.loads(result)
         return result
 
 

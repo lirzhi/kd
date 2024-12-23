@@ -1,3 +1,4 @@
+from sympy import factor_list
 from db.dbutils import singleton
 from db.dbutils.doc_store_conn import MatchTextExpr, OrderByExpr
 from db.dbutils.es_conn import ESConnection
@@ -93,8 +94,10 @@ class KDService:
         return self.vector_db.save(data=chunks)
     
 
-    def search_by_vector(self, query="", db_name="test_collection"):
-        query_text = query 
-        query_embedding = self.embedding.convert_text_to_embedding(source_sentence=[query_text])[0]
-        query_results_list = self.vector_db.search(query_embedding=[query_embedding])
+    def search_by_vector(self, query="", classification_filters=[], db_name="test_collection"):
+        query_embedding = self.embedding.convert_text_to_embedding(source_sentence=[query])[0]
+        query_results_list = self.vector_db.search(query_embedding=[query_embedding])[0]
+        if len(classification_filters) != 0:
+            query_results_list = [item for item in query_results_list if item["entity"]["classification"] in classification_filters]
         return query_results_list
+    

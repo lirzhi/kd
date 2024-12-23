@@ -105,7 +105,12 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             // 假设从后端接收到的 JSON 字符串存储在 resultResponse 变量中
-            var resultResponse = `{{ result.response | tojson | safe }}`; // 这里需要从后端获取实际的 JSON 字符串
+            var res = '{{ result }}';
+            if (res == 'undefined' || res == 'null' || res == '') {
+                alert('没有找到相关内容');
+                return;
+            }
+            var resultResponse = '{{ result.response | tojson | safe }}'; // 这里需要从后端获取实际的 JSON 字符串
             var response;
             try {
                 response = JSON.parse(resultResponse);

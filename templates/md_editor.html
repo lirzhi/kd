@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimpleMDE Markdown Editor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/simplemde/1.11.2/simplemde.min.css" />
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+  .container { display: flex; }
+  .left-column, .right-column { flex: 1; padding: 10px; border-right: 1px solid #ccc; }
+  .center-column { flex: 3; padding: 10px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="left-column">
+    <!-- 左边栏内容 -->
+  </div>
+  <div class="center-column">
+    <textarea id="editor" placeholder="编写您的报告..."></textarea>
+  </div>
+  <div class="right-column">
+    <!-- 右边栏内容 -->
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplemde/1.11.2/simplemde.min.js"></script>
+<script>
+  var simplemde = new SimpleMDE({ element: document.getElementById("editor") });
+</script>
+
+</body>
+</html>

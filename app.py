@@ -4,7 +4,7 @@ from sqlalchemy import text
 
 from db.services.file_service import FileService
 from db.services.kd_service import KDService
-from llm.llm_util import ask_llm_by_prompt_file
+from mutil_agents.agents.utils.llm_util import ask_llm_by_prompt_file
 from utils.common_util import ResponseMessage
 from utils.file_util import ensure_dir_exists, rewrite_json_file
 from utils.parser.parser_manager import ParserManager
@@ -82,24 +82,23 @@ def search_by_query():
     llm_context["reference"] = []
     llm_resp = {}
     reference_list = []
-    for items in result:
-        for item in items:
-            file_info = FileService().get_file_by_id(item["entity"]["doc_id"])
-            temp = {}
-            temp["doc_id"] = item["entity"]["doc_id"]
-            temp["file_name"] = file_info.file_name
-            temp["content"] = item["entity"]["text"]
-            temp["classification"] = item["entity"]["classification"]
-            temp["affect_range"] = item["entity"]["affect_range"]
-            llm_context["content"].append(temp["content"])
-            llm_context["reference"].append(temp["file_name"])
-            reference_file_info = {}
-            reference_file_info["doc_id"] = item["entity"]["doc_id"]
-            reference_file_info["file_name"] = file_info.file_name
-            reference_file_info["classification"] = item["entity"]["classification"]
-            reference_list.append(reference_file_info)
-            resp.append(temp)
-    gen = ask_llm_by_prompt_file("llm/prompts/generate_prompt.j2", llm_context)
+    for item in result:
+        file_info = FileService().get_file_by_id(item["entity"]["doc_id"])
+        temp = {}
+        temp["doc_id"] = item["entity"]["doc_id"]
+        temp["file_name"] = file_info.file_name
+        temp["content"] = item["entity"]["text"]
+        temp["classification"] = item["entity"]["classification"]
+        temp["affect_range"] = item["entity"]["affect_range"]
+        llm_context["content"].append(temp["content"])
+        llm_context["reference"].append(temp["file_name"])
+        reference_file_info = {}
+        reference_file_info["doc_id"] = item["entity"]["doc_id"]
+        reference_file_info["file_name"] = file_info.file_name
+        reference_file_info["classification"] = item["entity"]["classification"]
+        reference_list.append(reference_file_info)
+        resp.append(temp)
+    gen = ask_llm_by_prompt_file("mutil_agents/agents/prompts/generate_prompt.j2", llm_context)
     llm_resp["response"] = gen
     llm_resp["reference"] = reference_list
     
@@ -107,7 +106,9 @@ def search_by_query():
 
 @app.route('/')
 def index():
-    return render_template('search_form.html')
+    resp = {}
+    resp["response"] = None
+    return render_template('search_form.html', result=resp)
     
 @app.route('/search_by_classification', methods=['GET','POST'])
 def search_by_classification():
