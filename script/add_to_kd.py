@@ -2,7 +2,7 @@ import requests
 import time
 
 # Flask 应用的 URL
-BASE_URL = "http://localhost:5000/add_to_kd"
+BASE_URL = "http://127.0.0.1:5000/add_to_kd"
 
 # 读取 doc_id 列表
 with open('temp.txt', 'r') as file:

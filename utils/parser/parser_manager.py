@@ -38,7 +38,7 @@ class ParserManager:
             if ans is not None:
                 chunk["text"] = ans["response"]["text"]
                 chunk["summary"] = ans["response"]["summary"]
-                chunk["keywords"] = ans["response"]["keywords"]
+                chunk["keywords"] = ans["response"]["keyword"]
                 chunk["query"] = ans["response"]["query"]
             final_chunks.append(chunk)
         file_name = doc_info.file_name + '.json'
