@@ -1,4 +1,5 @@
 
+import logging
 import os
 import time
 from db.services.file_service import FileService
@@ -35,6 +36,7 @@ class ParserManager:
             chunk["classification"] = doc_info.classification
             chunk["affect_range"] = doc_info.affect_range
             ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/data_format_prompt.j2", chunk)
+            logging.info(f"Ask llm response: {ans['response']}")
             if ans is not None:
                 chunk["text"] = ans["response"]["text"]
                 chunk["summary"] = ans["response"]["summary"]

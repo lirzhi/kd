@@ -12,10 +12,10 @@
 
 ## 回复格式要求
 你必须以xml格式输出你的回答，不能有非xml的回答，你的回答的xml的根节点为<output></output>
-response：拆分出来的内容片段，可以有多个response标签，根据数据片段的数量来按需生成
-summary：数据片段对应的主题摘要信息
-text：你清洗后的文本内容
-keyword：数据片段对应的关键词
+response：只能有一个response标签
+summary：原始文本对应的主题摘要信息
+text：原始文本清洗后的内容
+keyword：text对应的关键词
 query：问题列表，可以检索出text的问题，重点从原始文本的主题、意图方面出发。你可以提出多个问题，但是至少要有2个问题。
 
 例如：
