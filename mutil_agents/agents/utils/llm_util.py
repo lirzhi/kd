@@ -1,4 +1,5 @@
 import json
+import logging
 from multiprocessing import Pool
 import re
 import time
@@ -62,6 +63,7 @@ def ask_llm_by_prompt_file(file_name, data="", mode="qwen"):
             data = convert_xml_to_dict(xml_str)
             if data:
                 return data
+    logging.warning(f"模型访问失败，返回原始字符串：{answer}")
     return None
 
 

@@ -11,5 +11,6 @@ class ReviewState(TypedDict):
     content_split_require_list: List[List[str]]
     content_split_report_list: List[str]
     relate_reference: List
-    review_report: str
+    final_reference: List
+    final_report: str
     status: bool

@@ -7,7 +7,7 @@ class ContentAnalyzeAgent:
         print("analyzing...")
         if ReviewState["content"] == None or ReviewState["content"] == "":
                     return ReviewState
-        ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/content_analyze_prompt.j2", review_state)
+        ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/review/content_analyze_prompt.j2", review_state)
         if ans == None or ans["response"] == None or len(ans["response"]) == 0:
                review_state["status"] = False
                return review_state

@@ -1,9 +1,9 @@
 ## 任务目标
-你是一个文本分割器，现在给你一段文本，请你按照下面的要求对文档进行分割，并生成相应格式的回答。
+你是一个文本分割器，现在给你一段文本，请你按照下面的要求对文本进行分割，并生成相应格式的回答。
 
 ## 分割要求
-1.不要改变文档的内容，如果文档中已经有多个段落，你需要尽可能保留这些段落的分割。
-2.按照主题对文档进行分割，每个主题的内容应该是连续的，不同主题之间的内容应该是分开的，你需要对每一段生成一个主题摘要。
+1.不要改变文本原始的内容。
+2.按照主题对文本进行分割，每个主题的内容应该是连续的，不同主题之间的内容应该是分开的，你需要对每一段生成一个主题摘要。
 
 ## 文本：
 {{data.content}}
@@ -28,11 +28,11 @@ question：
         <content>拆分片段1</content>
         <question>问题1</question>
         <question>问题2</question>
+    </response>
     <response>
-    <response>
-        <reference>yyy</reference>
+        <summary>yyy</summary>
         <content>拆分片段2</content>
         <question>问题1</question>
         <question>问题2</question>
-    <response>
+    </response>
 </output>

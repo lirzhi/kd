@@ -26,7 +26,8 @@ class ReportGenerationAgent:
         workflow.add_edge("search_direct_reference", "search_requirements")
         workflow.add_edge("search_requirements", "search_questions")
         workflow.add_edge("search_questions", "single_review")
-        workflow.add_edge("single_review", END)
+        workflow.add_edge("single_review", "generate_report")
+        workflow.add_edge("generate_report", END)
 
     def create_workflow(self, agents):
         workflow = StateGraph(ReviewState)
@@ -35,6 +36,7 @@ class ReportGenerationAgent:
         workflow.add_node("search_requirements", agents["search"].search_requirements)
         workflow.add_node("search_questions", agents["search"].search_questions)
         workflow.add_node("single_review", agents["review"].single_review)
+        workflow.add_node("generate_report", agents["review"].review_report)
         self.add_workflow_edges(workflow)
         return workflow
 

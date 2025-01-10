@@ -1,11 +1,15 @@
+import logging
+import os
+import jieba
 from sympy import factor_list
 from db.dbutils import singleton
 from db.dbutils.doc_store_conn import MatchTextExpr, OrderByExpr
 from db.dbutils.es_conn import ESConnection
 from db.dbutils.mysql_conn import MysqlConnection
+from db.dbutils.redis_conn import RedisDB
 from db.dbutils.vector_db import Embedding, VectorDB
 
-
+WORD_DICT = "userdict.txt"
 @singleton
 class KDService:
     def __init__(self):
@@ -13,6 +17,11 @@ class KDService:
         self.es_conn = ESConnection()
         self.embedding = Embedding()
         self.vector_db = VectorDB()
+        self.redis_conn = RedisDB()
+        if not os.path.exists(WORD_DICT):
+            with open(WORD_DICT, 'w') as f:
+                pass
+        jieba.load_userdict("userdict.txt")
 
     def save_chunks_to_es(self, chunk, index_name, kd_id):
         self.es_conn.createIdx(index_name, kd_id, 64)
@@ -101,3 +110,22 @@ class KDService:
             query_results_list = [item for item in query_results_list if item["entity"]["classification"] in classification_filters]
         return query_results_list
     
+    def add_explain_word(self, word, explain):
+        if self.redis_conn.exist(word):
+            logging.warning(f"word {word} already exists. new explain：{explain}")
+        ans = self.redis_conn.set(word, explain)
+        # 将word放入分词器的词表中
+        jieba.add_word(word)
+        return ans
+    
+    def search_explain_by_content(self, content):
+        # 分词后查询每个词是否有含义的解释,并返回词在句子中的位置
+        word_dict = {}
+        tokens = jieba.tokenize(content)
+        for word,start,end in tokens:
+           if self.redis_conn.exist(word):
+                word_dict[word] = {}
+                word_dict[word]["explain"] = self.redis_conn.get(word)
+                word_dict[word]["start"] = start
+                word_dict[word]["end"] = end
+        return word_dict

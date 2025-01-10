@@ -158,7 +158,7 @@ def rewrite_yaml_conf(conf_path, config):
 
 def rewrite_json_file(filepath, json_data):
     with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(json_data, f, indent=4, separators=(",", ": "))
+        json.dump(json_data, f, ensure_ascii=False, indent=4, separators=(",", ": "))
     f.close()
 
 
@@ -179,43 +179,6 @@ def filename_type(filename):
         return FileType.VISUAL.value
 
     return FileType.OTHER.value
-
-def thumbnail_img(filename, blob):
-    filename = filename.lower()
-    if re.match(r".*\.pdf$", filename):
-        pdf = pdfplumber.open(BytesIO(blob))
-        buffered = BytesIO()
-        pdf.pages[0].to_image(resolution=32).annotated.save(buffered, format="png")
-        return buffered.getvalue()
-
-    if re.match(r".*\.(jpg|jpeg|png|tif|gif|icon|ico|webp)$", filename):
-        image = Image.open(BytesIO(blob))
-        image.thumbnail((30, 30))
-        buffered = BytesIO()
-        image.save(buffered, format="png")
-        return buffered.getvalue()
-
-    if re.match(r".*\.(ppt|pptx)$", filename):
-        import aspose.slides as slides
-        import aspose.pydrawing as drawing
-        try:
-            with slides.Presentation(BytesIO(blob)) as presentation:
-                buffered = BytesIO()
-                presentation.slides[0].get_thumbnail(0.03, 0.03).save(
-                    buffered, drawing.imaging.ImageFormat.png)
-                return buffered.getvalue()
-        except Exception:
-            pass
-    return None
-
-
-def thumbnail(filename, blob):
-    img = thumbnail_img(filename, blob)
-    if img is not None:
-        return IMG_BASE64_PREFIX + \
-            base64.b64encode(img).decode("utf-8")
-    else:
-        return ''
 
 
 def traversal_files(base):

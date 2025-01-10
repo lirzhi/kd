@@ -1,0 +1,22 @@
+## 任务目标
+你是一个文本分块器，现在给你一段文本，你需要将片段一中的内容进行分块，每个分块尽量保持完整的语意。如果给的文本有明显的编号之类的天然语意分隔符，你应该按照这个分隔符进行分块。
+你不应该改变文本本来的含义，只需要对文本进行分割，使得分割后的文本信息聚焦。
+
+## 原始文本：
+{{data.text}}
+
+## 回复语言
+中文
+
+## 回复格式要求
+你必须以xml格式输出你的回答，不能有非xml的回答，你的回答的xml的根节点为<output></output>
+response：只能有一个response标签
+content：整理修正后的文本
+
+请你严格按照以下格式返回数据，例如：
+<output> 
+    <response>
+        <split_content>分割后的text1</split_content>
+        <split_content>分割后的text2</split_content>
+    </response>
+</output>

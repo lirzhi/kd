@@ -35,7 +35,8 @@ class VectorDB:
         self.collection_name = collection_name
 
         # 自动创建文件夹
-        ensure_dir_exists(db_path)
+        db_dir = os.path.dirname(db_path)
+        ensure_dir_exists(db_dir)
         self.client = MilvusClient(self.db_path)
 
         # 自动创建collection

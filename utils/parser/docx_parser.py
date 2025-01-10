@@ -28,7 +28,6 @@ class DocxParser:
 
         # 用于存储当前chunk的最后一个句子的起始位置
         last_sentence_start = None
-
         for i, paragraph in enumerate(doc.paragraphs):
             # 当前段落的文本
             paragraph_text = paragraph.text.strip()

@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 from datetime import datetime
+from model_setting import LLM
 
 from starlette.responses import StreamingResponse
 
@@ -18,8 +19,8 @@ logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(leve
                     filemode='a')
 app = FastAPI()
 
-
-dashscope.api_key = open("temp/key/qwen_key", "r").read()
+llm_model = LLM["models"][f"{LLM['model_use']}"]
+dashscope.api_key = open(llm_model["api_key_path"], "r").read()
 
 os.environ["DASHSCOPE_API_KEY"] = dashscope.api_key
 
@@ -38,9 +39,10 @@ def save_json(file_path, data):
         f.write(json.dumps(data, ensure_ascii=False))
 
 
+
 # 创建异步客户端实例
 fast_client = AsyncOpenAI(
-    api_key=os.getenv("DASHSCOPE_API_KEY"), base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+    api_key=os.getenv("DASHSCOPE_API_KEY"), base_url=llm_model["base_url"]
 )
 
 
@@ -49,10 +51,7 @@ async def chat_with_model(chat_history: ChatHistory):
     try:
         response = await fast_client.chat.completions.create(
             messages=chat_history.messages,
-            # model="qwen-turbo",
-            model="qwen-plus",
-            # model="qwen-max",
-            # model="qwen-long",
+            model=llm_model["model"],
         )
 
         if not response:
@@ -61,9 +60,9 @@ async def chat_with_model(chat_history: ChatHistory):
         else:
             answer = response.choices[0].message.content
         logging.info(f"request: {chat_history.messages}, response: {str(response)}")
-    except:
+    except Exception as e:
         answer = "question error"
-        logging.warning(f"request: {chat_history.messages}, response: 问题或回答中出现了违禁词")
+        logging.warning(f"request: {chat_history.messages}, error: {str(e)}")
     return answer
 
 
@@ -96,4 +95,4 @@ async def chat_with_model(chat_history: ChatHistory):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("qwen_server:app", host="127.0.0.1", port=8024, reload=True)
+    uvicorn.run("llm_server:app", host="127.0.0.1", port=8024, reload=True)

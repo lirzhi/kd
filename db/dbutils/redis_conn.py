@@ -2,7 +2,7 @@ import logging
 import json
 
 import valkey as redis
-import settings
+from db.settings import REDIS
 from db.dbutils import singleton
 
 
@@ -30,18 +30,22 @@ class Payload:
 class RedisDB:
     def __init__(self):
         self.REDIS = None
-        self.config = settings.REDIS
+        self.config = REDIS
         self.__open__()
 
     def __open__(self):
         try:
             self.REDIS = redis.StrictRedis(
-                host=self.config["host"].split(":")[0],
-                port=int(self.config.get("host", ":6379").split(":")[1]),
+                host=self.config["host"],
+                port=int(self.config.get("port", "6379")),
                 db=int(self.config.get("db", 1)),
+                username=self.config.get("username", "default"),
                 password=self.config.get("password"),
                 decode_responses=True,
             )
+            print(self.config.get("username", "default"))
+            print(self.config.get("password"))
+            self.REDIS.ping()
         except Exception:
             logging.warning("Redis can't be connected.")
         return self.REDIS
@@ -172,54 +176,6 @@ class RedisDB:
             )
             self.__open__()
         return False
-
-    def queue_product(self, queue, message, exp=settings.SVR_QUEUE_RETENTION) -> bool:
-        for _ in range(3):
-            try:
-                payload = {"message": json.dumps(message)}
-                pipeline = self.REDIS.pipeline()
-                pipeline.xadd(queue, payload)
-                # pipeline.expire(queue, exp)
-                pipeline.execute()
-                return True
-            except Exception as e:
-                logging.exception(
-                    "RedisDB.queue_product " + str(queue) + " got exception: " + str(e)
-                )
-        return False
-
-    def queue_consumer(
-        self, queue_name, group_name, consumer_name, msg_id=b">"
-    ) -> Payload:
-        try:
-            group_info = self.REDIS.xinfo_groups(queue_name)
-            if not any(e["name"] == group_name for e in group_info):
-                self.REDIS.xgroup_create(queue_name, group_name, id="0", mkstream=True)
-            args = {
-                "groupname": group_name,
-                "consumername": consumer_name,
-                "count": 1,
-                "block": 10000,
-                "streams": {queue_name: msg_id},
-            }
-            messages = self.REDIS.xreadgroup(**args)
-            if not messages:
-                return None
-            stream, element_list = messages[0]
-            msg_id, payload = element_list[0]
-            res = Payload(self.REDIS, queue_name, group_name, msg_id, payload)
-            return res
-        except Exception as e:
-            if "key" in str(e):
-                pass
-            else:
-                logging.exception(
-                    "RedisDB.queue_consumer "
-                    + str(queue_name)
-                    + " got exception: "
-                    + str(e)
-                )
-        return None
 
     def get_unacked_for(self, consumer_name, queue_name, group_name):
         try:

@@ -3,17 +3,17 @@ from functools import wraps
 import json
 import logging
 
-def parallelize_processing(field_to_iterate, result_field):
+def parallelize_processing(field_to_iterate, result_field, max_workers=3):
     def decorator(func):
         @wraps(func)
-        def wrapper(self, review_state):
+        def wrapper(self, data_state):
             logging.info(f"{func.__name__}...")
             # 创建线程池
-            with ThreadPoolExecutor() as executor:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 # 提交任务到线程池
-                futures = {executor.submit(func, self, review_state, item): index for index, item in enumerate(review_state[field_to_iterate])}
+                futures = {executor.submit(func, self, data_state, item): index for index, item in enumerate(data_state[field_to_iterate])}
                 # 收集结果
-                result_list = [None] * len(review_state[field_to_iterate])
+                result_list = [None] * len(data_state[field_to_iterate])
                 for future in as_completed(futures):
                     index = futures[future]
                     try:
@@ -23,8 +23,8 @@ def parallelize_processing(field_to_iterate, result_field):
                     else:
                         result_list[index] = result
                 # 将结果合并到review_state中
-                review_state[result_field] = result_list
-            return review_state
+                data_state[result_field] = result_list
+            return data_state
         return wrapper
     return decorator
 

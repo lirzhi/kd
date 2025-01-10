@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>依据追溯</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .trace-container {
+            width: 60%;
+            background-color: #ffffff;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        .trace-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        .trace-button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .trace-button:hover {
+            background-color: #0056b3;
+        }
+        .trace-result {
+            margin-top: 20px;
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="trace-container">
+        <h2>依据追溯</h2>
+        <input type="text" id="trace-input" class="trace-input" placeholder="输入问题进行搜索...">
+        <button id="trace-button" class="trace-button">搜索依据</button>
+        <div id="trace-result" class="trace-result">
+            <!-- 搜索结果将显示在这里 -->
+        </div>
+        <button id="add-to-trace" class="trace-button">添加到依据</button>
+    </div>
+
+    <script>
+        document.getElementById('trace-button').addEventListener('click', function() {
+            var question = document.getElementById('trace-input').value;
+            // 这里应该是调用AI搜索的函数，获取结果后显示在trace-result中
+            searchAI(question).then(result => {
+                document.getElementById('trace-result').innerText = result;
+            });
+        });
+
+        document.getElementById('add-to-trace').addEventListener('click', function() {
+            var resultText = document.getElementById('trace-result').innerText;
+            // 这里应该是将搜索结果添加到依据内容的逻辑
+            addToTrace(resultText);
+        });
+
+        function searchAI(question) {
+            // 模拟AI搜索过程
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve("这是基于AI的搜索结果，针对问题：" + question);
+                }, 1000);
+            });
+        }
+
+        function addToTrace(resultText) {
+            // 模拟将结果添加到依据内容的过程
+            console.log("添加到依据内容: ", resultText);
+            // 实际应用中，这里可能需要更新服务器端的数据或前端的数据结构
+        }
+    </script>
+</body>
+</html>

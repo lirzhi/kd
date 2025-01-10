@@ -2,6 +2,7 @@
 import logging
 import os
 import time
+from db.dbutils import singleton
 from db.services.file_service import FileService
 from mutil_agents.agents.utils.llm_util import ask_llm_by_prompt_file
 from utils.file_util import ensure_dir_exists, rewrite_json_file
@@ -35,13 +36,13 @@ class ParserManager:
             chunk["id"] = int(time.time())
             chunk["classification"] = doc_info.classification
             chunk["affect_range"] = doc_info.affect_range
-            ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/data_format_prompt.j2", chunk)
-            logging.info(f"Ask llm response: {ans['response']}")
-            if ans is not None:
-                chunk["text"] = ans["response"]["text"]
-                chunk["summary"] = ans["response"]["summary"]
-                chunk["keywords"] = ans["response"]["keyword"]
-                chunk["query"] = ans["response"]["query"]
+            # ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/data_format_prompt_simple.j2", chunk)
+            # logging.info(f"Ask llm response: {ans['response']}")
+            # if ans is not None:
+            #     # chunk["text"] = ans["response"]["text"]
+            #     # chunk["summary"] = ans["response"]["summary"]
+            #     # chunk["keywords"] = ans["response"]["keyword"]
+            #     chunk["query"] = ans["response"]["query"]
             final_chunks.append(chunk)
         file_name = doc_info.file_name + '.json'
 
@@ -49,5 +50,13 @@ class ParserManager:
         ensure_dir_exists(dir_path)
         rewrite_json_file(filepath=os.path.join(dir_path, file_name), json_data=final_chunks)
         return final_chunks
+    
+    @staticmethod
+    def parse_by_path(file_path):
+        file_type = file_path.split('.')[-1]
+        parser = ParserManager.parser_map.get(file_type)
+        if parser is None:
+            raise ValueError(f'No parser found for file type {file_type}')
+        return parser(file_path)
 
     
