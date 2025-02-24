@@ -11,7 +11,7 @@ def parallelize_processing(field_to_iterate, result_field, max_workers=3):
             # 创建线程池
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 # 提交任务到线程池
-                futures = {executor.submit(func, self, data_state, item): index for index, item in enumerate(data_state[field_to_iterate])}
+                futures = {executor.submit(func, self, data_state, item, index): index for index, item in enumerate(data_state[field_to_iterate])}
                 # 收集结果
                 result_list = [None] * len(data_state[field_to_iterate])
                 for future in as_completed(futures):

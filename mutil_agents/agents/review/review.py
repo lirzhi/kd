@@ -14,7 +14,7 @@ class ReviewAgent:
         data["content_split_question_list"] = review_state["content_split_question_list"][index]
         data["conten_split_search_list"] = review_state["content_split_search_list"][index]
         data["relate_reference"] = review_state["relate_reference"][index]
-        ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/review/single_review_prompt.j2", data)
+        ans = ask_llm_by_prompt_file("mutil_agents/prompts/review/single_review_prompt.j2", data)
         if ans == None or ans["response"] == None:
             ans["response"] = ""
         if not isinstance(ans["response"], list):
@@ -40,7 +40,7 @@ class ReviewAgent:
                         review_state["final_reference"].append(ref)
 
 
-        ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/review/review_report_prompt.j2", review_state)
+        ans = ask_llm_by_prompt_file("mutil_agents/prompts/review/review_report_prompt.j2", review_state)
         if ans == None or ans["response"] == None:
             logging.error(f"review error: ans is None") 
             ans = ""

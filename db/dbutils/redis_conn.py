@@ -43,8 +43,6 @@ class RedisDB:
                 password=self.config.get("password"),
                 decode_responses=True,
             )
-            print(self.config.get("username", "default"))
-            print(self.config.get("password"))
             self.REDIS.ping()
         except Exception:
             logging.warning("Redis can't be connected.")

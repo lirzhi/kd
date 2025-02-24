@@ -102,7 +102,7 @@ def search_by_query():
             reference_map[item["entity"]["doc_id"]]["content"] += " " + reference_file_info["content"]
         else:
             reference_map[item["entity"]["doc_id"]] = reference_file_info
-    gen = ask_llm_by_prompt_file("mutil_agents/agents/prompts/review/generate_prompt.j2", llm_context)
+    gen = ask_llm_by_prompt_file("mutil_agents/prompts/review/generate_prompt.j2", llm_context)
     llm_resp["response"] = gen["response"]
     llm_resp["reference"] = reference_map
     llm_resp["query"] = query
@@ -136,7 +136,7 @@ def regenerate_report():
         logging.error('No content provided')
         return ResponseMessage(400, 'No content provided', None).to_json()
     print(content)
-    ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/review/review_report_prompt.j2", content)
+    ans = ask_llm_by_prompt_file("mutil_agents/prompts/review/review_report_prompt.j2", content)
     if ans == None or ans["response"] == None:
         logging.error(f"review error: ans is None") 
         ans = ""

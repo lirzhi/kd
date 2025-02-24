@@ -30,7 +30,7 @@ class SearchAgent:
         for item in result:
             data["content"].append(item["entity"]["text"])
             data["reference"].append(item["entity"]["doc_id"])
-        ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/review/requirement_generate_prompt.j2", data)
+        ans = ask_llm_by_prompt_file("mutil_agents/prompts/review/requirement_generate_prompt.j2", data)
         if ans is None or ans["response"] is None or len(ans["response"]) == 0:
             ans = {}
             ans["response"] = []
@@ -51,7 +51,7 @@ class SearchAgent:
             for item in result:
                 data["content"].append(item["entity"]["text"])
                 data["reference"].append(item["entity"]["doc_id"])
-            ans = ask_llm_by_prompt_file("mutil_agents/agents/prompts/review/generate_prompt.j2", data)
+            ans = ask_llm_by_prompt_file("mutil_agents/prompts/review/generate_prompt.j2", data)
             if ans is None or ans["response"] is None or len(ans["response"]) == 0:
                 ans = {}
                 ans["response"] = []

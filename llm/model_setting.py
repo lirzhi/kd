@@ -1,6 +1,6 @@
 
 LLM = {
-    "model_use": "xh",
+    "model_use": "glm",
     "models": { 
         "qwen": {
             "model": "qwen-turbo",

@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph
-from mutil_agents.agents.content_analysis import ContentAnalyzeAgent
-from mutil_agents.agents.review import ReviewAgent
-from mutil_agents.agents.search import SearchAgent
+from mutil_agents.agents.review.content_analysis import ContentAnalyzeAgent
+from mutil_agents.agents.review.review import ReviewAgent
+from mutil_agents.agents.review.search import SearchAgent
 from mutil_agents.memory.review_state import ReviewState
 from langgraph.graph import START, END
 

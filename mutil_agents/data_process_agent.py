@@ -1,4 +1,4 @@
-from mutil_agents.agents.data_process import DataProcess
+from mutil_agents.agents.data_process.data_process import DataProcess
 from langgraph.graph import StateGraph
 from langgraph.graph import START, END
 
