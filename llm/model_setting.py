@@ -2,6 +2,11 @@
 LLM = {
     "model_use": "glm",
     "models": { 
+        "deepseek": {
+            "model": "deepseek-reasoner",
+            "base_url": "https://api.deepseek.com/v1",
+            "api_key_path": "temp/key/deepseek_key",
+        },    
         "qwen": {
             "model": "qwen-turbo",
             "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
