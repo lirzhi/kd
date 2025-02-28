@@ -14,6 +14,9 @@ class SpecificReview:
     @parallelize_processing(field_to_iterate='review_require_list', result_field='search_plan_list')
     def analyze(self, review_state: SpecificReviewState, review_require, index):
         print("start analyze")
+        if review_state.get("search_plan_list") != None and len(review_state["search_plan_list"]) > index:
+            return review_state["search_plan_list"][index]
+        
         data = {
             "content": review_state["content"],
             "review_require": review_require,
@@ -32,6 +35,9 @@ class SpecificReview:
     @parallelize_processing(field_to_iterate='search_plan_list', result_field='search_list')
     def search(self, review_state: SpecificReviewState, search_plan, index):
         print("start search")
+        if review_state.get("search_list") != None and len(review_state["search_list"]) > index:
+            return review_state["search_list"][index]
+        
         if search_plan == None or len(search_plan) == 0:
             logging.warning("search_plan is empty")
             return None
@@ -64,6 +70,9 @@ class SpecificReview:
     @parallelize_processing(field_to_iterate='review_require_list', result_field='review_result_list')
     def generate_report_by_require(self, review_state: SpecificReviewState, review_require, index):
         print("start generate_report_by_require")
+        if review_state.get("review_result_list") != None and len(review_state["review_result_list"]) > index:
+            return review_state["review_result_list"][index]
+        
         data = {
             "content": review_state["content"],
             "search_info": review_state["search_list"][index],
@@ -81,18 +90,26 @@ class SpecificReview:
         data = {
             "content": review_state["content"],
             "review_result_list": review_state["review_result_list"],
-            "report_require": review_state["report_require_list"]
+            "report_require": review_state["report_require_list"],
         }
         ans = ask_llm_by_prompt_file("mutil_agents/prompts/specific_review/final_report_generate_prompt.j2", data)
         if ans == None or ans["response"] == None or len(ans["response"]) == 0:
             ans = {
                 "response": None
             }
-        review_state["final_report"] = ans["response"]
+        if review_state.get("final_report") == None:
+            review_state["final_report"] = []
+        review_state["final_report"].append(ans["response"])
         return review_state
     
     def check_report(self, review_state: SpecificReviewState):
         print("start judge")
+        data = {
+            "content": review_state["content"],
+            "review_require_list": review_state["review_require_list"],
+            "review_result_list": review_state["review_result_list"],
+            "final_report": review_state["final_report"][-1]
+        }
         ans = ask_llm_by_prompt_file("mutil_agents/prompts/specific_review/judge_report_prompt.j2", review_state)
         if ans == None or ans["response"] == None or len(ans["response"]) == 0:
             ans = {
@@ -101,7 +118,9 @@ class SpecificReview:
                     "info": "ok"
                 }
             }
-        review_state["judge_result"] = ans["response"]
+        if review_state.get("judge_result") == None:
+            review_state["judge_result"] = []   
+        review_state["judge_result"].append(ans["response"])
         print(ans["response"]["step"])
         return ans["response"]["step"]
         
