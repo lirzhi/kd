@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Element-UI Example</title>
+    <!-- 引入Element-UI的样式文件 -->
+    <link rel="stylesheet" href="./element-ui.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 主容器 -->
+        <el-container v-if="!isSourceView" class="main-container">
+            <!-- 左侧章节区域 -->
+            <el-aside width="40%" class="chapter-container">
+                <el-card class="chapter-card">
+                    <div slot="header">
+                        <el-select 
+                            v-model="selectedChapterIndex" 
+                            placeholder="请选择章节"
+                            class="chapter-select">
+                            <el-option
+                                v-for="(chapter, index) in chapters"
+                                :key="index"
+                                :label="'第' + chapter.label + '章'"
+                                :value="index">
+                            </el-option>
+                        </el-select>
+                    </div>
+                    
+                    <!-- 当前选中章节的内容编辑 -->
+                    <el-input
+                        type="textarea"
+                        v-model="chapters[selectedChapterIndex].content"
+                        :rows="12"
+                        placeholder="输入章节内容">
+                    </el-input>
+                </el-card>
+            </el-aside>
+
+            <!-- 右侧审评报告区域 -->
+            <el-main class="report-container">
+                <el-card class="report-card">
+                    <div slot="header" class="report-header">
+                        <span>审评报告</span>
+                        <div>
+                            <el-button 
+                                type="primary" 
+                                @click="generateConclusion(selectedChapterIndex)"
+                                style="margin-left: 10px;">
+                                生成报告
+                            </el-button>
+                            <el-button type="info" @click="showSource">结论来源</el-button>
+                            <el-button type="warning" @click="showExpDialog">经验管理</el-button>
+                            <el-button type="danger" @click="regenerate">重新生成</el-button>
+                        </div>
+                    </div>
+                    <!-- 当前章节结论展示 -->
+                    <div class="conclusion-section">
+                        <h4>当前结论：</h4>
+                        <el-input
+                            type="textarea"
+                            v-model="chapters[selectedChapterIndex].conclusion.content"
+                            :rows="6"
+                            readonly>
+                        </el-input>
+                    </div>
+                </el-card>
+            </el-main>
+        </el-container>
+
+        <!-- 结论来源视图 -->
+        <el-container v-else class="source-container">
+            <el-aside width="40%">
+                <el-card class="source-list">
+                    <div slot="header" class="source-header">
+                        <el-button type="primary" @click="backToMain">返回</el-button>
+                        <span>结论来源列表</span>
+                    </div>
+                    <el-card 
+                        v-for="(source, index) in sources"
+                        :key="index"
+                        class="source-item">
+                        <div class="requirement">
+                            <h4>要求说明</h4>
+                            <p>{{ source.requirement }}</p>
+                        </div>
+                        <div class="conclusion">
+                            <h4>结论内容</h4>
+                            <p>{{ source.conclusion }}</p>
+                        </div>
+                    </el-card>
+                </el-card>
+            </el-aside>
+
+            <el-main>
+                <div class="search-box" :class="{expanded: showSearch}">
+                    <el-button 
+                        class="toggle-search"
+                        @click="toggleSearch"
+                        icon="el-icon-search">
+                    </el-button>
+                    <el-input
+                        v-show="showSearch"
+                        v-model="searchQuery"
+                        placeholder="输入搜索内容"
+                        class="search-input">
+                        <el-button slot="append" @click="doSearch">搜索</el-button>
+                    </el-input>
+                </div>
+                <el-card class="report-view">
+                    <!-- 保留原有的报告显示 -->
+                </el-card>
+            </el-main>
+        </el-container>
+
+        <!-- 经验管理对话框 -->
+        <el-dialog
+            title="经验管理"
+            :visible.sync="expDialogVisible"
+            width="40%">
+            <div class="exp-dialog-content">
+                <el-input
+                    v-model="newExperience"
+                    type="textarea"
+                    :rows="3"
+                    placeholder="输入新经验">
+                </el-input>
+                <el-button 
+                    type="primary" 
+                    class="add-btn"
+                    @click="addExperience">
+                    添加经验
+                </el-button>
+                
+                <div class="exp-list">
+                    <div v-for="(exp, index) in experiences" 
+                         :key="index"
+                         class="exp-item">
+                        <el-input
+                            v-model="exp.content"
+                            type="textarea"
+                            autosize
+                            readonly>
+                        </el-input>
+                        <el-button
+                            type="danger"
+                            icon="el-icon-delete"
+                            @click="deleteExperience(index)">
+                        </el-button>
+                    </div>
+                </div>
+            </div> 
+        </el-dialog>
+    </div>
+
+    <!-- 引入Vue.js -->
+    <script src="./vue.js"></script>
+    <!-- 引入Element-UI -->
+    <script src="./element-ui.js"></script>
+    <script>
+        // 创建Vue实例
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    chapters: [
+                        { 
+                            label: '3.3.1', 
+                            value: '3.3.1',
+                            content: '初始内容...',
+                            conclusion: {
+                                content: '暂无结论',
+                                references: [],
+                                experiences: [],
+                                rawData: null
+                            }
+                        },
+                        // 其他章节...
+                    ],
+                    // 当前选中的章节索引
+                    selectedChapterIndex: 0,
+                    isSourceView: false,
+                    sources: [],
+                    expDialogVisible: false,
+                    newExperience: '',
+                    experiences: [],
+                    showSearch: false,
+                    searchQuery: '',
+                    currentReport: ''
+                }
+            },
+
+            created() {
+                this.initChapters();
+            },
+            methods: {
+                // 初始化章节数据
+                initChapters() {
+                    this.chapters = this.chapters.map(chapter => ({
+                        ...chapter,
+                        content: chapter.content || '暂无内容',
+                        conclusion: {
+                            content: '暂无结论',
+                            references: [],
+                            experiences: [],
+                            rawData: null
+                        }
+                    }));
+                },
+
+                // 生成章节结论
+                async generateConclusion(index) {
+                    try {
+                        const chapter = this.chapters[index];
+                        const response = await fetch('http://127.0.0.1:5000/test', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({content: chapter.content})
+                        });
+                        
+                        const data = await response.json();
+                        if (data.code === 200) {
+                            this.$set(this.chapters, index, {
+                                ...chapter,
+                                conclusion: {
+                                    content: data.data.final_report,
+                                    references: data.data.final_reference || [],
+                                    experiences: chapter.conclusion.experiences,
+                                    rawData: data.data
+                                }
+                            });
+                            this.$message.success(`第${chapter.label}章结论生成成功`);
+                        }
+                    } catch (error) {
+                        console.error('生成结论失败:', error);
+                        this.$message.error('结论生成失败，请重试');
+                    }
+                },
+
+                // 重新生成结论
+                async regenerate() {
+                    try {
+                        const chapter = this.chapters[0]; // 假设只重新生成第一个章节的结论
+                        const tempData = {
+                            content: chapter.content,
+                            original_report: chapter.conclusion.content,
+                            content_split_reference_list: chapter.conclusion.references,
+                            final_experience: chapter.conclusion.experiences,
+                            content_split_conclusion_list: chapter.conclusion.rawData?.content_split_report_list || []
+                        };
+
+                        const response = await fetch('http://127.0.0.1:5000/regenerate_report', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ content: tempData })
+                        });
+
+                        const data = await response.json();
+                        if (data.code === 200) {
+                            this.$set(this.chapters, 0, {
+                                ...chapter,
+                                conclusion: {
+                                    ...chapter.conclusion,
+                                    content: data.data.report,
+                                    rawData: {
+                                        ...chapter.conclusion.rawData,
+                                        final_report: data.data.report
+                                    }
+                                }
+                            });
+                            this.$message.success(`第${chapter.label}章结论重新生成成功`);
+                        }
+                    } catch (error) {
+                        console.error('重新生成失败:', error);
+                        this.$message.error('重新生成失败，请重试');
+                    }
+                },
+
+                // 显示结论来源
+                showSource() {
+                    this.isSourceView = true;
+                    // 模拟获取结论来源数据
+                    this.sources = [
+                        { requirement: '要求1', conclusion: '结论1' },
+                        { requirement: '要求2', conclusion: '结论2' }
+                    ];
+                },
+
+                // 返回主页面
+                backToMain() {
+                    this.isSourceView = false;
+                },
+
+                // 显示经验管理弹窗
+                showExpDialog() {
+                    this.expDialogVisible = true;
+                },
+
+                // 添加经验
+                addExperience() {
+                    if (this.newExperience.trim()) {
+                        this.experiences.push({ content: this.newExperience });
+                        this.newExperience = '';
+                    }
+                },
+
+                // 删除经验
+                deleteExperience(index) {
+                    this.experiences.splice(index, 1);
+                },
+
+                // 切换搜索框显示
+                toggleSearch() {
+                    this.showSearch = !this.showSearch;
+                },
+
+                // 执行搜索
+                doSearch() {
+                    // 模拟搜索逻辑
+                    this.$message.info(`搜索内容: ${this.searchQuery}`);
+                }
+            }
+        });
+    </script>
+    <style>
+        /* 全局样式 */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* 主容器 */
+        .main-container {
+            display: flex;
+            height: 100vh;
+            padding: 20px;
+            background-color: #f0f4f8;
+            box-sizing: border-box;
+        }
+
+        /* 左侧章节区域 */
+        .chapter-container {
+            width: 40%;
+            padding-right: 20px;
+            box-sizing: border-box;
+        }
+        /* 章节选择器样式 */
+        .chapter-select {
+            width: 200px;
+        }
+
+        /* 调整卡片高度 */
+        .chapter-card {
+            height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .report-card {
+            height: calc(100vh - 120px);
+        }
+
+        /* .chapter-card {
+            margin-bottom: 20px;
+            transition: box-shadow 0.3s;
+        } */
+
+        .chapter-card:hover {
+            box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .chapter-card .el-card__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .conclusion-section {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .conclusion-section h4 {
+            color: #606266;
+            margin-bottom: 10px;
+        }
+
+        /* 右侧审评报告区域 */
+        .report-container {
+            width: 60%;
+            padding-left: 20px;
+            box-sizing: border-box;
+        }
+
+        .report-card {
+            height: 100%;
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* 结论来源弹窗 */
+        .reference-modal {
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .reference-item {
+            margin-bottom: 10px;
+        }
+
+        .reference-item textarea {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .reference-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+        /* 按钮样式优化 */
+        .el-button {
+            margin-left: 10px;
+        }
+
+        /* 搜索框样式 */
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        .search-box.expanded {
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            margin-left: 10px;
+        }
+    </style>
+</body>
+</html>
