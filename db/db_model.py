@@ -3,8 +3,8 @@ from db.dbutils.mysql_conn import Base, MysqlConnection
 class FileInfo(Base):
     __tablename__ = "file_info"
 
-    id = Column(Integer, primary_key=True, index=True)
-    doc_id = Column(String(256), nullable=False, index=True)
+    id = Column(Integer, primary_key=True, index=True, comment="主键自增id")
+    doc_id = Column(String(256), nullable=False, index=True, comment="文档id")
     file_name = Column(String(256), nullable=False)
     file_path = Column(String(256), nullable=False, unique=True)
     file_type = Column(String(256), nullable=False)

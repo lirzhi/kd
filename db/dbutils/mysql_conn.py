@@ -1,6 +1,6 @@
 
 import logging
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -28,4 +28,18 @@ class MysqlConnection:
     def recreate_all(self):
         Base.metadata.drop_all(bind=self.engine)
         Base.metadata.create_all(bind=self.engine)
+
+    def get_table_structure_with_comments(self, table_name):
+        inspector = inspect(self.engine)
+        # 获取表的列信息
+        columns = inspector.get_columns(table_name)
+        # 构建结果字典
+        table_structure = {}
+        for column in columns:
+            column_name = column['name']
+            column_comment = column.get('comment', 'No comment')  # 如果没有注释，默认为 'No comment'
+            if column_comment is None:
+                column_comment = 'No comment'
+            table_structure[column_name] = column_comment
+        return table_structure
 

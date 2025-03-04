@@ -1,5 +1,7 @@
+import json
 import logging
-from flask import Flask, jsonify, request, redirect, url_for, render_template, flash
+import time
+from flask import Flask, Response, jsonify, request, redirect, url_for, render_template, flash
 from flask_cors import CORS, cross_origin
 from sqlalchemy import text
 
@@ -7,7 +9,7 @@ from db.services.file_service import FileService
 from db.services.kd_service import KDService
 from mutil_agents.agents.utils.llm_util import ask_llm_by_prompt_file
 from mutil_agents.memory.review_state import ReviewState
-from utils.common_util import ResponseMessage
+from utils.common_util import ResponseMessage, get_handle_info
 from utils.file_util import ensure_dir_exists, rewrite_json_file
 from utils.parser.parser_manager import ParserManager
 from mutil_agents.agent import graph
@@ -19,7 +21,7 @@ logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(leve
                     filemode='a')
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Used to protect the application from cross-site request forgery attacks
-CORS(app)
+CORS(app, resources={r"/stream_logs": {"origins": "*"}})
 @app.route('/upload_file', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
@@ -236,7 +238,34 @@ def test_search():
         }
     },
     "query": "新药首次药物临床试申请有什么注意事项"
-}
+    }
     return ResponseMessage(200, 'Search completed', data).to_json()
+
+@app.route('/test_single_review', methods=['GET','POST'])
+@cross_origin()
+def test_single_review():
+    data = {'content': '\n当前属于eCTD模块3.2.S.4.2分析方法部分\n2 溶解度\n2.1. 试药与试剂：甲醇\n2.2. 仪器与设备：秒表、电子分析天平(万分之一)、容量瓶、量筒、刻度吸管。\n2.3. 操作方法：\na) .水中溶解度： 精密称取本品1g,置于10ml具塞刻度试管中，加水1mL然后于25℃±2℃\n的水浴条件下每隔5分钟强力振摇30秒，观察30分钟，应完全溶解。\nb) .甲醇中的溶解度： 精密称取本品1g,置于10ml具塞刻度试管中，加水1mL然后于25℃±2℃\n的水浴条件下每隔5分钟强力振摇30秒，观察30分钟，应未完全溶解。\n精密称取本品1g,置于10ml具塞刻度试管中，加水9mL然后于25℃±2℃\n的条件下每隔5分钟强力振摇30秒，观察30分钟，应完全溶解。\n2.4.结果：本品在水中极易溶，在甲醇中易溶。', 'review_require_list': ['1.需要说明检测方法合理性，一般如果药典存在检测方法，可以直接引用，如果没有，需要说明检测方法的合理性。', '2.需要说明检测方法合理性，一般如果药典存在检测方法，可以直接引用，如果没有，需要说明检测方法的合理性。'], 'search_plan_list': [[{'tool': '指导原则检索工具', 'parameter': ['eCTD_module=3.2.S.4.2', 'module_name=分析方法', 'principle_name=药典标准检测方法']}], [{'tool': '指导原则检索工具', 'parameter': ['eCTD_module=3.2.S.4.2', 'module_name=分析方法', 'principle_name=药典标准检测方法']}]], 'search_list': [[['reference', 'content']], [['reference', 'content']]], 'review_result_list': [{'conclusion': {'content': '待审评内容的检测方法合理，水中溶解度的测试方法符合常规测试流程，通过25℃±2℃的水浴条件下强力振摇，确保样品充分溶解，操作方法符合规范。甲醇中的溶解度测试方法同样合理，通过逐步增加水量，观察样品溶解情况，可以准确判断溶解度。虽然本方法未直接引用药典检测方法，但操作步骤合理，符合溶解度测定的科学原理。', 'reference': '参考1'}}, {'conclusion': {'content': '待审评内容中关于溶解度检测的方法是合理的。虽然未直接引用药典中的检测方法，但操作方法详细描述了水中和甲醇中的溶解度测试步骤，符合溶解度测定的常规流程。水中溶解度测试通过强力振摇确保药物完全溶解，而甲醇中的溶解度测试则通过增加溶剂体积来确保未完全溶解。这种设计可以有效地比较药物在不同溶剂中的溶解性，从而评估其溶解度。没有发现检索信息中的内容与此相矛盾。', 'reference': 'reference1'}}], 'report_require_list': ['1.需要说明检测方法合理性，一般如果药典存在检测方法，可以直接引用，如果没有，需要说明检测方法的合理性。'], 'final_report': [{'report': {'content': '检测方法的合理性：本实验采用的方法参考了相关药典，对于水中溶解度的测定，采用25℃±2℃的水浴条件下强力振摇的方法，能够有效模拟人体内的溶解环境，确保结果的准确性。对于甲醇中的溶解度测定，同样采用25℃±2℃的水浴条件，通过对比水中溶解度的结果，可以判断出药物在不同溶剂中的溶解性。此方法合理且符合实际检测需求。', 'reference': '1'}}]}
+    return ResponseMessage(200, 'Search completed', data).to_json()
+
+@app.route('/stream_logs')
+@cross_origin()
+def stream_logs():
+    def event_stream():
+        try:
+            while True:
+                data = get_handle_info()
+                if data:
+                    # SSE 格式要求：data: {json}\n\n
+                    yield f"data: {json.dumps(data)}\n\n"
+                time.sleep(1)
+        except GeneratorExit:
+            logging.info("Client disconnected, stopping stream")
+
+    return Response(
+        event_stream(),
+        mimetype="text/event-stream",  # 关键 MIME 类型
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+    )
+
 if __name__ == '__main__':
     app.run(debug=True)

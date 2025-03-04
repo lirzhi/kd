@@ -21,3 +21,9 @@ MYSQL = {
     "pool_size": 40,
     "max_overflow": 20
 }
+
+SVR_QUEUE_NAME = "handle_info_queue"
+SVR_QUEUE_RETENTION = 60*60
+SVR_QUEUE_MAX_LEN = 1024
+SVR_CONSUMER_NAME = "handle_info_consumer"
+SVR_CONSUMER_GROUP_NAME = "handle_info_consumer_group"

@@ -1,7 +1,7 @@
 import logging
 from mutil_agents.agents.utils.llm_util import ask_llm_by_prompt_file
 from mutil_agents.memory.specific_review_state import SpecificReviewState
-from utils.common_util import parallelize_processing
+from utils.common_util import parallelize_processing, produce_handle_info
 from mutil_agents.agents.specific_review.tools import tools
 from mutil_agents.agents.specific_review.tools import methods_mapping
 
@@ -16,7 +16,6 @@ class SpecificReview:
         print("start analyze")
         if review_state.get("search_plan_list") != None and len(review_state["search_plan_list"]) > index:
             return review_state["search_plan_list"][index]
-        
         data = {
             "content": review_state["content"],
             "review_require": review_require,
@@ -29,7 +28,8 @@ class SpecificReview:
                }
         if ans["response"] != None and type(ans["response"]) != list:
             ans["response"] = [ans["response"]]
-        print(ans)
+        for item in ans["response"]:
+            produce_handle_info({"task": "检索计划", "data":item.get("explain", None)})
         return ans["response"]
     
     @parallelize_processing(field_to_iterate='search_plan_list', result_field='search_list')
@@ -65,6 +65,8 @@ class SpecificReview:
                 logging.error(e)
                 ans = None
             search_list.append(ans)
+        for item in search_list:
+            produce_handle_info({"task": "检索信息", "data":item})
         return search_list
     
     @parallelize_processing(field_to_iterate='review_require_list', result_field='review_result_list')
@@ -72,7 +74,7 @@ class SpecificReview:
         print("start generate_report_by_require")
         if review_state.get("review_result_list") != None and len(review_state["review_result_list"]) > index:
             return review_state["review_result_list"][index]
-        
+        produce_handle_info({"task": "当前处理要求", "data": review_require})
         data = {
             "content": review_state["content"],
             "search_info": review_state["search_list"][index],
@@ -83,10 +85,12 @@ class SpecificReview:
             ans = {
                 "response": None
             }
+        produce_handle_info({"task": "当前处理结果", "data": ans["response"]})
         return ans["response"]
     
     def generate_final_report(self, review_state: SpecificReviewState):
         print("start generate_final_report")
+        produce_handle_info({"task": "最终报告生成", "data": "开始生成最终报告..."})
         data = {
             "content": review_state["content"],
             "review_result_list": review_state["review_result_list"],
@@ -104,6 +108,7 @@ class SpecificReview:
     
     def check_report(self, review_state: SpecificReviewState):
         print("start judge")
+        produce_handle_info({"task": "评估", "data": "评估最终报告..."})
         data = {
             "content": review_state["content"],
             "review_require_list": review_state["review_require_list"],
@@ -121,6 +126,9 @@ class SpecificReview:
         if review_state.get("judge_result") == None:
             review_state["judge_result"] = []   
         review_state["judge_result"].append(ans["response"])
+        info = "评估通过" if ans["response"]["step"] == "continue" else f"报告评估未通过，存在问题：{ans['response']['info']}" 
+       
+        produce_handle_info({"task": "评估结果", "data": info})
         print(ans["response"]["step"])
         return ans["response"]["step"]
         

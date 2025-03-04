@@ -15,6 +15,15 @@
 #    ans = service.search_explain_by_content("本品在水中极易溶解，在甲醇中易溶。")
 #    print(ans)
 
+from sqlalchemy import text
+from db.dbutils.mysql_conn import MysqlConnection
+from mutil_agents.agents.specific_review.tools import Tools
+
+struct_info = MysqlConnection().get_table_structure_with_comments("medicines")
+print(struct_info)
+data = Tools.search_medicine("阿莫西林胶囊的性状是什么？")
+print(data)
+
 from mutil_agents.agent import specific_report_generationAgent_graph
 from mutil_agents.memory.specific_review_state import SpecificReviewState
 
