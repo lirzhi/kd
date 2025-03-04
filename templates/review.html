@@ -645,4 +645,16 @@
         function confirmAction() {
             alert("确认操作");
         }
+
+const eventSource = new EventSource('http://127.0.0.1:5000/stream_logs');
+
+eventSource.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    console.log('Received log:', data);
+};
+
+eventSource.onerror = (e) => {
+    console.error('Error:', e);
+    eventSource.close();
+};
     </script>
