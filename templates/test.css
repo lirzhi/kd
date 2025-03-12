@@ -1,0 +1,193 @@
+
+/* 全局样式 */
+body {
+margin: 0;
+font-family: Arial, sans-serif;
+}
+
+.main-wrapper {
+height: 100vh;
+
+.system-header {
+background: #409EFF;
+display: flex;
+align-items: center;
+.system-title {
+color: white;
+font-size: 24px;
+font-weight: bold;
+}
+}
+
+.nav-sidebar {
+background: #f5f7fa;
+.menu-container {
+height: 100%;
+border-right: none;
+}
+}
+
+.main-content {
+padding: 20px;
+background: #f0f2f5;
+
+.chapter-selector {
+    margin-bottom: 20px;
+    .chapter-select {
+        width: 300px;
+    }
+}
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-container {
+    height: calc(100vh - 160px);
+    
+    .content-card,
+    .conclusion-card {
+        height: 100%;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px 0 rgba(0,0,0,.1);
+        
+        ::v-deep .el-card__body {
+        height: calc(100% - 50px);
+        padding: 20px;
+        }
+    }
+
+.text-editor-container,
+.conclusion-display {
+    height: 90%;
+    .rounded-editor,
+    .rounded-display {
+    height: 100%;
+    textarea {
+        border-radius: 8px;
+        resize: none;
+    }
+    }
+}
+
+.button-group {
+    margin-bottom: 20px;
+    .action-btn {
+    margin-right: 10px;
+    border-radius: 6px;
+    padding: 12px 20px;
+    }
+}
+.stream-display {
+    margin-bottom: 15px;
+    transition: all 0.3s;
+}
+
+.dynamic-console {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Courier New', monospace;
+    
+    textarea {
+        resize: none;
+        &::-webkit-scrollbar {
+            width: 6px;
+        }
+        &::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 3px;
+        }
+    }
+}
+
+.rounded-display {
+    transition: margin-top 0.3s;
+}
+}
+
+}
+}
+.exp-dialog {
+height: 66vh;
+border-radius: 12px;
+
+::v-deep .el-dialog__body {
+    height: calc(100% - 55px);
+    padding: 20px;
+}
+
+.exp-dialog-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    .input-section {
+    margin-bottom: 20px;
+    .exp-textarea {
+        ::v-deep textarea {
+        border-radius: 8px;
+        min-height: 100px;
+        }
+    }
+    .btn-container {
+        text-align: center;
+        margin: 15px 0;
+        .confirm-btn {
+        width: 120px;
+        border-radius: 6px;
+        padding: 12px 24px;
+        }
+    }
+    }
+
+    .exp-list {
+        flex: 1;
+        overflow-y: auto;
+        .exp-item {
+            margin-bottom: 15px;
+            border-radius: 10px;
+            ::v-deep .el-card__body {
+            padding: 15px;
+            }
+            .card-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            .exp-content {
+                ::v-deep textarea {
+                border-radius: 6px;
+                }
+            }
+            .action-container {
+                margin-top: 10px;
+                text-align: center;
+            }
+            }
+        }
+    }
+    /* 添加光标动画效果 */
+    .rounded-display textarea {
+        position: relative;
+    }
+
+    .rounded-display textarea::after {
+        content: "|";
+        animation: blink 1s step-end infinite;
+        position: absolute;
+        right: 10px;
+        bottom: 5px;
+        color: #409EFF;
+    }
+
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+    }
+
+    /* 添加过渡效果 */
+    .rounded-display textarea {
+        transition: all 0.3s ease;
+    }
+}
+}

@@ -13,7 +13,7 @@ LLM = {
             "api_key_path": "temp/key/qwen_key",
         },
         "xh": {
-            "model": "generalv3.5",
+            "model": "lite",
             "base_url": "https://spark-api-open.xf-yun.com/v1/",
             "api_key_path": "temp/key/xh_key",
         },
