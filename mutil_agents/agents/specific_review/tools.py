@@ -1,3 +1,4 @@
+import json
 from sqlalchemy import text
 from db.dbutils.mysql_conn import MysqlConnection
 from db.dbutils.redis_conn import RedisDB
@@ -34,9 +35,17 @@ class Tools:
     @staticmethod
     def search_principle(eCTD_module, module_name, principle_name=None):
         # 寻找直接可获取的指导原则
-        value = RedisDB().get(eCTD_module)
+        value = RedisDB().get(f"principle+{eCTD_module}")
+        print(f"search redis: {value}")
         if value is None:
             value = []
+        else:
+            value = json.loads(value)
+            if module_name is None or len(module_name) == 0:
+                module_name = value.get("章节名称", "")
+            value = value.get("报告要求", [])
+            
+        # 从非结构化数据寻找指导原则
         if principle_name is not None:
             query = f"{module_name}部分包含什么指导要求 ？"
             search_info = KDService().search_by_query(query=query)
@@ -44,9 +53,10 @@ class Tools:
                 "query": query,
                 "search_info": search_info
             }
-        resp = ask_llm_by_prompt_file("mutil_agents/prompts/data_access_format/principle2list.j2", data)
-        if resp is not None and len(resp["response"]) > 0:
-            value += resp["response"]
+            resp = ask_llm_by_prompt_file("mutil_agents/prompts/data_access_format/principle2list.j2", data)
+            if resp is not None and len(resp["response"]) > 0:
+                value += resp["response"]
+        print(f"value:{value}")
         return value  
 
     @staticmethod   

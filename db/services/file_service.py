@@ -79,6 +79,13 @@ class FileService:
         finally:
             self.db_session.close()
 
+    def get_file_by_classification(self, classification):
+        try:
+            return self.db_session.query(models.FileInfo).filter_by(classification=classification).all()
+        finally:
+            self.db_session.close()
+
+
     def save_file(self, file, meta_info = {}):
          if not allowed_file(file.filename):
             logging.warning('File type not allowed')

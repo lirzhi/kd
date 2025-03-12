@@ -1,14 +1,21 @@
 import logging
+from db.dbutils.redis_conn import RedisDB
+from db.services.kd_service import KDService
 from mutil_agents.agents.utils.llm_util import ask_llm_by_prompt_file
 from mutil_agents.memory.specific_review_state import SpecificReviewState
 from utils.common_util import parallelize_processing, produce_handle_info
-from mutil_agents.agents.specific_review.tools import tools
+from mutil_agents.agents.specific_review.tools import Tools, tools
 from mutil_agents.agents.specific_review.tools import methods_mapping
 
 class SpecificReview:
     def get_require_list(self, review_state: SpecificReviewState):
         # 获取指导原则要求和报告要求列表
-
+        data = Tools.search_principle(review_state.get("content_section",""), review_state.get("content_section_name",""))
+        if data == None or len(data) == 0:
+            data = []
+        if review_state.get("report_require_list", None) == None:
+            review_state["report_require_list"] = []
+        review_state["review_require_list"] += data
         return review_state
 
     @parallelize_processing(field_to_iterate='review_require_list', result_field='search_plan_list')
@@ -29,7 +36,7 @@ class SpecificReview:
         if ans["response"] != None and type(ans["response"]) != list:
             ans["response"] = [ans["response"]]
         for item in ans["response"]:
-            produce_handle_info({"task": "检索计划", "data":item.get("explain", None)})
+            produce_handle_info({"task": "问题", "data":item.get("question", None)})
         return ans["response"]
     
     @parallelize_processing(field_to_iterate='search_plan_list', result_field='search_list')
@@ -37,7 +44,6 @@ class SpecificReview:
         print("start search")
         if review_state.get("search_list") != None and len(review_state["search_list"]) > index:
             return review_state["search_list"][index]
-        
         if search_plan == None or len(search_plan) == 0:
             logging.warning("search_plan is empty")
             return None
@@ -64,6 +70,9 @@ class SpecificReview:
             except Exception as e:
                 logging.error(e)
                 ans = None
+            if ans == None: # 检索向量知识库
+                ans = KDService().search_by_query(tool.get("question"))
+                print(f"search by query:{ans}")
             search_list.append(ans)
         for item in search_list:
             produce_handle_info({"task": "检索信息", "data":item})
@@ -108,6 +117,8 @@ class SpecificReview:
     
     def check_report(self, review_state: SpecificReviewState):
         print("start judge")
+        if len(review_state.get("final_report", [])) > 2:
+            return "continue"
         produce_handle_info({"task": "评估", "data": "评估最终报告..."})
         data = {
             "content": review_state["content"],

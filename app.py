@@ -5,15 +5,19 @@ from flask import Flask, Response, jsonify, request, redirect, url_for, render_t
 from flask_cors import CORS, cross_origin
 from sqlalchemy import text
 
+from db.dbutils.redis_conn import RedisDB
 from db.services.file_service import FileService
 from db.services.kd_service import KDService
 from mutil_agents.agents.utils.llm_util import ask_llm_by_prompt_file
 from mutil_agents.memory.review_state import ReviewState
 from utils.common_util import ResponseMessage, get_handle_info
 from utils.file_util import ensure_dir_exists, rewrite_json_file
+from utils.parser.ctd_parser import CTDPDFParser
 from utils.parser.parser_manager import ParserManager
 from mutil_agents.agent import graph
+import os
 
+eCTD_FILE_PATH = 'data/parser/eCTD/'
 ensure_dir_exists('log')
 logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s',
                     level=logging.INFO,
@@ -81,34 +85,7 @@ def search_by_query():
     query = request.form.get('query')
     if not query:
         query = request.json.get('query')
-    result = KDService().search_by_vector(query)
-    resp = []
-    llm_context = {}
-    llm_context["query"] = query
-    llm_context["content"] = []
-    llm_context["reference"] = []
-    llm_resp = {}
-    reference_map = {}
-    for item in result:
-        file_info = FileService().get_file_by_id(item["entity"]["doc_id"])
-        temp = {}
-        temp["doc_id"] = item["entity"]["doc_id"]
-        temp["content"] = item["entity"]["text"]
-        llm_context["content"].append(temp["content"])
-        llm_context["reference"].append(temp["doc_id"])
-        reference_file_info = {}
-        reference_file_info["file_name"] = file_info.file_name
-        reference_file_info["content"] = temp["content"]
-        reference_file_info["classification"] = item["entity"]["classification"]
-        if item["entity"]["doc_id"] in reference_map:
-            reference_map[item["entity"]["doc_id"]]["content"] += " " + reference_file_info["content"]
-        else:
-            reference_map[item["entity"]["doc_id"]] = reference_file_info
-    gen = ask_llm_by_prompt_file("mutil_agents/prompts/review/generate_prompt.j2", llm_context)
-    llm_resp["response"] = gen["response"]
-    llm_resp["reference"] = reference_map
-    llm_resp["query"] = query
-    
+    llm_resp = KDService().search_by_query(query)
     return ResponseMessage(200, 'Search completed', llm_resp).to_json()
 
 @app.route('/')
@@ -129,6 +106,79 @@ def review_text():
     result = graph.invoke(review_state)
     print(ResponseMessage(200, 'Review completed', result).to_json())
     return ResponseMessage(200, 'Review completed', result).to_json()
+
+@app.route('/parse_ectd/<doc_id>', methods=['GET','POST'])
+@cross_origin()
+def parse_ectd(doc_id):
+    file_info = FileService().get_file_by_id(doc_id)
+    if file_info is None:
+        logging.error(f'File {doc_id} not found')
+        return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
+    file_path = file_info.file_path
+    if file_info.classification != 'ectd':
+        logging.error(f'File {doc_id} is not an eCTD file')
+        return ResponseMessage(400, f'File {doc_id} is not an eCTD file', None).to_json()
+    try:
+        parser = CTDPDFParser(file_path)
+        data = parser.parse()
+        data['doc_id'] = doc_id
+        redis_conn = RedisDB()
+        for item in data.get("content", []):
+            redis_conn.set(doc_id + item.get("section_id"), json.dumps(item), None)  
+        rewrite_json_file(f'{eCTD_FILE_PATH}{doc_id}.json', data)
+    except Exception as e:
+        logging.error(f'Failed to parse file: {str(e)}')
+        return ResponseMessage(400, f'Failed to parse file: {str(e)}', None).to_json()
+    FileService().update_file_chunk_by_id(doc_id, 1)
+    return ResponseMessage(200, 'File parsed successfully', data).to_json()
+
+@app.route('/delete_ectd/<doc_id>', methods=['GET','POST'])
+@cross_origin()
+def delete_ectd(doc_id):
+    file_info = FileService().get_file_by_id(doc_id)
+    if file_info is None:
+        logging.error(f'File {doc_id} not found')
+        return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
+    file_path = file_info.file_path
+    try:
+        os.remove(file_path)
+    except Exception as e:
+        logging.error(f'Failed to delete file: {str(e)}')
+        return ResponseMessage(400, f'Failed to delete file: {str(e)}', None).to_json()
+    
+    if file_info.is_chunked != 1:
+        return ResponseMessage(200, 'File deleted successfully', None).to_json()
+    try:
+        os.remove(f"{eCTD_FILE_PATH}{doc_id}.json")
+    except Exception as e:
+        logging.error(f'Failed to delete file: {str(e)}')
+        return ResponseMessage(400, f'Failed to delete file: {str(e)}', None).to_json()
+    redis_conn = RedisDB()
+    keys = redis_conn.keys(doc_id + "*")
+    for key in keys:
+        redis_conn.delete(key)
+    return ResponseMessage(200, 'File deleted successfully', None).to_json()
+
+@app.route('/get_ectd_info_list', methods=['GET','POST'])
+@cross_origin()
+def get_ectd_info_list():
+    file_list = FileService().get_file_by_classification('ectd')
+    print(file_list)
+    data_info = []
+    for item in file_list:
+        obj = {}
+        obj["doc_id"] = item.doc_id
+        obj["file_name"] = item.file_name
+        obj["parse_status"] = item.is_chunked
+        data_info.append(obj)
+    return ResponseMessage(200, 'Get eCTD file list successfully', data_info).to_json()
+
+@app.route('/get_ectd_content/<ectd_key>', methods=['GET','POST'])
+@cross_origin()
+def get_ectd_content(ectd_key):
+    redis_conn = RedisDB()
+    data = redis_conn.get(ectd_key)
+    return ResponseMessage(200, 'Get content successfully', data).to_json()
 
 @app.route('/regenerate_report', methods=['GET','POST'])
 @cross_origin() 
