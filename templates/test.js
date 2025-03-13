@@ -1,4 +1,3 @@
-
 // 创建Vue实例
 new Vue({
     el: '#app',
@@ -10,6 +9,8 @@ new Vue({
             ],
             content:"",
             report:"",
+            isExpanded: false, // 控制搜索框展开状态
+            searchKeyword: "", // 搜索关键词
             eventSource:null,
             // 新增数据项
             displayReport: "",      // 实际显示的内容
@@ -25,6 +26,7 @@ new Vue({
                 affectRange:""
             },
             fileList:[],
+            parseLoading:false,
             ectdList:[],
             newExperience: '',
             experiences: [],
@@ -50,6 +52,15 @@ new Vue({
         this.initChapters();
         this.fetchData();
     },
+    mounted(){
+        /// 监听外部点击事件
+        document.addEventListener('click', this.clickOutsideHandler);
+
+    },
+    beforeDestroy() {
+        // 移除事件监听
+        document.removeEventListener('click', this.clickOutsideHandler);
+      },
     watch: {
         selectedChapterIndex() {
         this.loadSources()
@@ -116,50 +127,162 @@ new Vue({
         },
         //上传ectd文件
         // 文件上传方法
-        async handleUpload(file) {
+        showUploadDialog(){
+            this.uploadDialogVisible = true;
+            this.getEctdList();
+        },
+        //上传文件
+        async submitUpload() {
             const formData = new FormData();
+            const file = this.fileList[0];
+            console.log("file为",file.raw)
             formData.append('file', file.raw);
-            formData.append('category', 'clinical'); // 示例附加参数
-
+            formData.append('classification', 'eCTD'); 
+            formData.append('affect_range', 'eCTD');
+            console.log("formData为",formData)
             try {
-                const res = await this.$http.post('http://127.0.0.1:5000/upload', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+                const res = await fetch('http://127.0.0.1:5000/upload_file',  {
+                    
+                    method: 'POST',
+                    body: formData, // 注意：不要手动设置 Content-Type
                 });
                 
-                if (res.status === 201) {
-                this.$message.success('上传成功');
+                if (res.status === 200) {
+                  this.$message.success('上传成功');
+                  this.fileList = [],
+                  this.getEctdList();
                 }
             } catch (error) {
-                this.handleApiError(error, '文件上传失败');
+                this.$message.error('文件上传失败');
+                console.log("error为：",error,)
             }
         },
-        //解析ectd
-        async parseECTD(row){
-
+        handlePreview(file,fileList){
+            console.log("file为：",file)
         },
-        // 确认删除
-        confirmDelete(row) {
-            this.$confirm('确定删除该文档吗？', '提示', {
-            type: 'warning'
-            }).then(async () => {
-            await this.deleteECTD(row.doc_id);
+         //修改文件列表
+        handleChange(file, fileList) {
+            this.fileList = fileList;
+            console.log("fileList 为：",fileList )
+        },
+        beforeUpload(file) {
+            this.fileList.push(file);
+            console.log("fileList 为：",fileList )
+            return false; // 阻止默认上传行为
+        },
+        //删除文件列表里的文件
+        handleRemove(file, fileList) {
+            this.fileList = fileList; // 更新文件列表
+            this.$message({
+                message: '文件删除成功',
+                type: 'info'
             });
         },
-
-        // 执行删除
-        async deleteECTD(docId) {
-            try {
-            // const res = await this.$http.delete(`/api/ectd/${docId}`);
-            if (res.data.code === 200) {
-                this.$message.success('删除成功');
-                // this.fetchECTDList();
-            }
-            } catch (error) {
-            this.$message.error('删除失败');
-            }
+        // 状态显示格式化
+        statusType(status) {
+            const statusMap = {
+            1: 'info',   // 上传中
+            2: 'success', // 可解析
+            3: 'danger'   // 已失效
+            };
+            return statusMap[status] || 'info';
         },
+
+        statusText(status) {
+            const textMap = {
+            1: '已上传',
+            2: '可解析',
+            3: '已失效'
+            };
+            return textMap[status] || '未知状态';
+        },
+        // async handleUpload(file) {
+        //     const formData = new FormData();
+        //     const file = fileList[0];
+        //     formData.append('file', file.raw);
+        //     formData.append('classification', 'eCTD'); 
+        //     formData.append('affect_range', 'eCTD'); 
+        //     try {
+        //         const res = await this.$http.post('http://127.0.0.1:5000/upload', formData, {
+        //         headers: {
+        //             'Content-Type': 'multipart/form-data'
+        //         }
+        //         });
+                
+        //         if (res.status === 200) {
+        //         this.$message.success('上传成功');
+        //         }
+        //     } catch (error) {
+        //         this.handleApiError(error, '文件上传失败');
+        //     }
+        // },
+        //获取Ectd列表
+        async getEctdList() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/get_ectd_info_list', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                });
+                
+                const data = await response.json();
+                console.log("data为：",data)
+                if (data.code === 200) {
+                    this.ectdList = data.data;
+                }
+            } catch (error) {
+                console.error('获取Ectd列表失败:', error);
+                this.$message.error('获取Ectd列表失败，请重试');
+            }
+          },
+      
+          async handleParse(docId) {
+            try {
+              
+              console.log("docId为：",docId)
+              const response = await fetch(`http://127.0.0.1:5000//parse_ectd/${docId}`, {
+                method: 'POST',
+            });
+              const res = await response.json();
+              console.log("res为：",res)
+              
+              if (res.code === 200) {
+                this.$message.success('解析成功');
+                await this.getEctdList();
+              } else {
+                this.$message.error(res.error);
+              }
+            } finally {
+           
+            }
+          },
+      
+          async handleDelete(docId) {
+            try {
+              await this.$confirm('确认删除该文件？此操作不可恢复！', '警告', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+              });
+              console.log("docId为：",docId)
+              
+              const response = await fetch(`http://127.0.0.1:5000/delete_ectd/${docId}`, {
+                method: 'POST',
+            });
+              const res = await response.json();
+              console.log("res为：",res)
+              
+              if (res.code === 200) {
+                this.$message.success('删除成功');
+                await this.getEctdList();
+              } else {
+                this.$message.error(res.error);
+              }
+            } catch (error) {
+              if (error !== 'cancel') {
+                this.$message.error('删除失败');
+              }
+            }
+          },
 
         // 生成章节结论
         async fetchData() {
@@ -336,15 +459,40 @@ new Vue({
             showExpDialog() {
             this.expDialogVisible = true;
         },
-        showUploadDialog(){
-            this.uploadDialogVisible = true;
-        },
 
         // 切换搜索框显示
-        toggleSearch() {
-            this.showSearch = !this.showSearch;
-        },
-
+        // toggleSearch() {
+        //     this.showSearch = !this.showSearch;
+        // },
+        // 切换搜索框状态
+            toggleSearch() {
+                this.isExpanded = !this.isExpanded;
+                if (this.isExpanded) {
+                this.$nextTick(() => {
+                    this.$refs.searchInput.focus();
+                });
+                }
+            },
+            // 处理悬浮球点击
+            handleBallClick(event) {
+                if (!this.isExpanded) {
+                this.toggleSearch();
+                }
+            },
+            // 执行搜索
+            performSearch() {
+                if (this.searchKeyword.trim()) {
+                alert(`执行搜索：${this.searchKeyword}`);
+                // 实际搜索逻辑...
+                this.searchKeyword = '';
+                }
+            },
+            // 点击外部关闭
+            clickOutsideHandler(event) {
+                if (this.isExpanded && !event.target.closest('.search-container')) {
+                this.toggleSearch();
+                }
+            },
         // 执行搜索
         doSearch() {
             // 模拟搜索逻辑
@@ -404,38 +552,6 @@ new Vue({
             this.$message.error('加载来源数据失败')
         }
         },
-        //上传文件
-        submitUpload() {
-            // this.$refs.upload.submit();
-            const file = fileList[0].raw;
-            const classfication = this.uploadForm.classfication;
-            const affectRange = this.uploadForm.affectRange;
-
-        },
-        handleRemove(file, fileList) {
-            console.log(file, fileList);
-        },
-        handlePreview(file) {
-            console.log(file);
-        },
-        // 状态显示格式化
-        statusType(status) {
-            const statusMap = {
-            1: 'info',   // 上传中
-            2: 'success', // 可解析
-            3: 'danger'   // 已失效
-            };
-            return statusMap[status] || 'info';
-        },
-
-        statusText(status) {
-            const textMap = {
-            1: '已上传',
-            2: '可解析',
-            3: '已失效'
-            };
-            return textMap[status] || '未知状态';
-        }
     },
     }
 );

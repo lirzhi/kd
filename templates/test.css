@@ -101,6 +101,62 @@ background: #f0f2f5;
     }
 }
 
+.search-container {
+    position: fixed;
+    bottom: 40px;
+    left: 40px;
+    z-index: 2000;
+  }
+  
+  .search-ball {
+    width: 56px;
+    height: 56px;
+    background: #409eff;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .search-ball.expanded {
+    width: 400px;
+    border-radius: 28px;
+    background: #fff;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .search-icon {
+    color: white;
+    font-size: 24px;
+    transition: opacity 0.2s;
+  }
+  
+  .search-box {
+    width: 100%;
+    padding: 0 16px;
+  }
+  
+  .custom-input {
+    width: 100%;
+  }
+  
+  .search-btn {
+    padding: 8px;
+    margin-left: 8px;
+    transition: all 0.2s;
+  }
+  
+  .search-btn:hover {
+    transform: scale(1.1);
+  }
+  
+  .search-btn:active {
+    transform: scale(0.95);
+  }
+
 .rounded-display {
     transition: margin-top 0.3s;
 }

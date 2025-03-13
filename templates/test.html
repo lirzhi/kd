@@ -30,7 +30,7 @@
                         </el-menu-item>
                         <el-menu-item index="2">
                             <i class="el-icon-files"></i>
-                            <span>审批记录</span>
+                            <span>审批记录</span>+
                         </el-menu-item>
                         <el-menu-item index="3">
                             <i class="el-icon-files"></i>
@@ -42,6 +42,19 @@
                 <!-- 主内容区域 -->
                 <el-main class="main-content">
                     <!-- 章节选择栏 -->
+                    <div class="chapter-selector">
+                        <el-select
+                            v-model="selectedChapterIndex"
+                            placeholder="请选择章节"
+                            class="chapter-select">
+                            <el-option
+                                v-for="(chapter, index) in chapters"
+                                :key="index"
+                                :label="'第' + chapter.label + '章'"
+                                :value="index">
+                            </el-option>
+                        </el-select>
+                    </div>
                     <div class="chapter-selector">
                         <el-select
                             v-model="selectedChapterIndex"
@@ -77,7 +90,7 @@
                         <el-col v-else :span="12">
                             <el-card class="content-card">
                             <!-- 搜索栏 -->
-                                <div class="source-search">
+                                <!-- <div class="source-search">
                                     <el-input
                                     v-model="sourceSearchQuery"
                                     placeholder="搜索结论来源"
@@ -89,7 +102,40 @@
                                         @click="searchSources">
                                     </el-button>
                                     </el-input>
-                                </div>
+                                </div> -->
+
+                                <div class="search-container" @click.stop>
+                                    <!-- 悬浮球 -->
+                                    <div
+                                      class="search-ball"
+                                      :class="{ 'expanded': isExpanded }"
+                                      @click="handleBallClick"
+                                    >
+                                      <!-- 收缩状态显示搜索图标 -->
+                                      <i v-if="!isExpanded" class="el-icon-search search-icon"></i>
+                                
+                                      <!-- 展开后的搜索区域 -->
+                                      <transition name="el-zoom-in-center">
+                                        <div v-if="isExpanded" class="search-box">
+                                          <el-input
+                                            ref="searchInput"
+                                            v-model="searchKeyword"
+                                            placeholder="请输入搜索内容"
+                                            class="custom-input"
+                                            @keyup.enter.native="performSearch"
+                                          >
+                                            <el-button
+                                              slot="append"
+                                              type="primary"
+                                              class="search-btn"
+                                              icon="el-icon-search"
+                                              @click="performSearch"
+                                            />
+                                          </el-input>
+                                        </div>
+                                      </transition>
+                                    </div>
+                                  </div>
 
                                 <!-- 来源列表 -->
                                 <div class="source-list">
@@ -145,20 +191,6 @@
                                         <el-button type="danger" @click="regenerate">重新生成</el-button>
                                     </div>
                                 </div>
-
-                                 <!-- 新增动态生成区域
-                                <transition name="el-zoom-in-top">
-                                    <div v-if="isGenerating" class="stream-display">
-                                        <el-input
-                                            type="textarea"
-                                            :value="streamContent"
-                                            :rows="8"
-                                            readonly
-                                            class="dynamic-console"
-                                            id="streamConsole">
-                                        </el-input>
-                                    </div>
-                                </transition> -->
 
                                 <!-- 最终报告显示 -->
                                 <!-- <div class="conclusion-display" :style="{marginTop: isGenerating ? '20px' : '0'}"> -->
@@ -256,9 +288,11 @@
                 <el-upload
                     class="upload-demo"
                     ref="upload"
-                    action="http://127.0.0.1:5000/upload"
+                    action=""
                     :on-preview="handlePreview"
                     :on-remove="handleRemove"
+                    :on-change="handleChange"
+                    :before-upload="beforeUpload"
                     :file-list="fileList"
                     :auto-upload="false">
                     <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
@@ -291,7 +325,33 @@
                 prop="file_name"
                 label="文件名称">
                 </el-table-column>
-                </template>
+                <el-table-column
+                    label="解析状态"
+                    width="120">
+                    <template v-slot="scope">
+                    <el-tag :type="scope.row.parse_status === 1 ? 'success' : 'warning'">
+                        {{ scope.row.parse_status === 1 ? '已解析' : '未解析' }}
+                    </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column
+                    label="操作"
+                    width="200"
+                    fixed="right">
+                    <template v-slot="scope">
+                    <el-button
+                        size="mini"
+                        type="primary"
+                        :disabled="scope.row.parse_status === 1"
+                        @click="handleParse(scope.row.doc_id)"
+                        :loading="parseLoading[scope.row.doc_id]"
+                    >解析</el-button>
+                    <el-button
+                        size="mini"
+                        type="danger"
+                        @click="handleDelete(scope.row.doc_id)"
+                    >删除</el-button>
+                    </template>
                 </el-table-column>
             </el-table>
         </el-dialog>

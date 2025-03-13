@@ -8,6 +8,8 @@ from db.dbutils.es_conn import ESConnection
 from db.dbutils.mysql_conn import MysqlConnection
 from db.dbutils.redis_conn import RedisDB
 from db.dbutils.vector_db import Embedding, VectorDB
+from db.services.file_service import FileService
+from mutil_agents.agents.utils.llm_util import ask_llm_by_prompt_file
 
 WORD_DICT = "userdict.txt"
 @singleton
@@ -129,3 +131,37 @@ class KDService:
                 word_dict[word]["start"] = start
                 word_dict[word]["end"] = end
         return word_dict
+
+    def search_by_query(self, query):
+        result = KDService().search_by_vector(query)
+        if result is None or len(result) == 0:
+            return None
+        resp = []
+        llm_context = {}
+        llm_context["query"] = query
+        llm_context["content"] = []
+        llm_context["reference"] = []
+        llm_resp = {}
+        reference_map = {}
+        for item in result:
+            file_info = FileService().get_file_by_id(item["entity"]["doc_id"])
+            if file_info is None:
+                continue
+            temp = {}
+            temp["doc_id"] = item["entity"]["doc_id"]
+            temp["content"] = item["entity"]["text"]
+            llm_context["content"].append(temp["content"])
+            llm_context["reference"].append(temp["doc_id"])
+            reference_file_info = {}
+            reference_file_info["file_name"] = file_info.file_name
+            reference_file_info["content"] = temp["content"]
+            reference_file_info["classification"] = item["entity"]["classification"]
+            if item["entity"]["doc_id"] in reference_map:
+                reference_map[item["entity"]["doc_id"]]["content"] += " " + reference_file_info["content"]
+            else:
+                reference_map[item["entity"]["doc_id"]] = reference_file_info
+        gen = ask_llm_by_prompt_file("mutil_agents/prompts/review/generate_prompt.j2", llm_context)
+        llm_resp["response"] = gen["response"]
+        llm_resp["reference"] = reference_map
+        llm_resp["query"] = query
+        return llm_resp

@@ -12,21 +12,21 @@
 
 ## 回复格式要求
 你必须以xml格式输出你的回答，不能有非xml的回答，你的回答的xml的根节点为<output></output>
-explain: 对于检索的说明，例如：检索阿莫西林胶囊的性状信息
 response：可以有多个response标签，每个response标签对应一次工具的调用
-tool：工具的名称，例如XX工具
+question: 根据审评内容和要求提出你不理解的问题，不受限于工具信息，但是你的问题必须是一个完整的主谓宾结构，不准用任何代词，即提出的问题要尽可能具体，不依赖上下文也能理解含义，例如：检索阿莫西林胶囊的性状是什么？
+tool：针对question可以调用工具的名称，例如XX工具，如果没有工具可以调用，可以填写为None,后续参数全留空就行
 parameter: 工具的参数，可以有多个parameter标签，根据工具的参数数量来生成,格式为参数名=参数值,可留空的参数如果提取不出来，可以不填写该参数
 
 例如：
 <output> 
     <response>
-        <explain>检索说明</explain>
+        <question>检索问题</question>
         <tool>xxx</tool>     
         <parameter>参数1</parameter>
         <parameter>参数2</parameter>
     </response>
     <response>
-        <explain>检索说明</explain>
+        <question>检索问题</question>
         <tool>xxx</tool>     
         <parameter>参数1</parameter>
         <parameter>参数2</parameter>
