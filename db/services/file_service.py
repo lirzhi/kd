@@ -31,6 +31,12 @@ class FileService:
             return self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id).first()
         finally:
             self.db_session.close()
+
+    def delete_file_by_id(self, doc_id):
+        try:
+            return self.db_session.delete(models.FileInfo).filter_by(doc_id=doc_id)
+        finally:
+            self.db_session.close()
     
     def update_file_chunk_by_id(self, doc_id, chunk_size):
         try:

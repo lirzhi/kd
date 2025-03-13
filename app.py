@@ -116,7 +116,7 @@ def parse_ectd(doc_id):
         logging.error(f'File {doc_id} not found')
         return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
     file_path = file_info.file_path
-    if file_info.classification != 'ectd':
+    if file_info.classification != 'eCTD':
         logging.error(f'File {doc_id} is not an eCTD file')
         return ResponseMessage(400, f'File {doc_id} is not an eCTD file', None).to_json()
     try:
@@ -137,15 +137,20 @@ def parse_ectd(doc_id):
 @cross_origin()
 def delete_ectd(doc_id):
     file_info = FileService().get_file_by_id(doc_id)
+    
     if file_info is None:
         logging.error(f'File {doc_id} not found')
         return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
     file_path = file_info.file_path
+    flag = FileService().delete_file_by_id(doc_id)
+    if not flag:
+        logging.error(f'Failed to delete file {doc_id}')
+        return ResponseMessage(400, f'Failed to delete file {doc_id}', None).to_json()    
     try:
         os.remove(file_path)
     except Exception as e:
         logging.error(f'Failed to delete file: {str(e)}')
-        return ResponseMessage(400, f'Failed to delete file: {str(e)}', None).to_json()
+        return ResponseMessage(400, f'Failed to delete local file: {str(e)}', None).to_json()
     
     if file_info.is_chunked != 1:
         return ResponseMessage(200, 'File deleted successfully', None).to_json()
@@ -153,7 +158,7 @@ def delete_ectd(doc_id):
         os.remove(f"{eCTD_FILE_PATH}{doc_id}.json")
     except Exception as e:
         logging.error(f'Failed to delete file: {str(e)}')
-        return ResponseMessage(400, f'Failed to delete file: {str(e)}', None).to_json()
+        return ResponseMessage(400, f'Failed to delete local parsed file: {str(e)}', None).to_json()
     redis_conn = RedisDB()
     keys = redis_conn.keys(doc_id + "*")
     for key in keys:
