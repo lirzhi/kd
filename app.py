@@ -136,11 +136,15 @@ def parse_ectd(doc_id):
 @cross_origin()
 def delete_ectd(doc_id):
     file_info = FileService().get_file_by_id(doc_id)
-    FileService().delete_file_by_id(doc_id)
+    
     if file_info is None:
         logging.error(f'File {doc_id} not found')
         return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
     file_path = file_info.file_path
+    flag = FileService().delete_file_by_id(doc_id)
+    if not flag:
+        logging.error(f'Failed to delete file {doc_id}')
+        return ResponseMessage(400, f'Failed to delete file {doc_id}', None).to_json()    
     try:
         os.remove(file_path)
     except Exception as e:
