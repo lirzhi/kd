@@ -115,7 +115,7 @@ def parse_ectd(doc_id):
         logging.error(f'File {doc_id} not found')
         return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
     file_path = file_info.file_path
-    if file_info.classification != 'ectd':
+    if file_info.classification != 'eCTD':
         logging.error(f'File {doc_id} is not an eCTD file')
         return ResponseMessage(400, f'File {doc_id} is not an eCTD file', None).to_json()
     try:
