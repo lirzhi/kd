@@ -19,6 +19,7 @@ import os
 
 eCTD_FILE_PATH = 'data/parser/eCTD/'
 ensure_dir_exists('log')
+ensure_dir_exists(eCTD_FILE_PATH)
 logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s',
                     level=logging.INFO,
                     filename='log/server.log',

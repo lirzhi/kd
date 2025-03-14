@@ -28,6 +28,9 @@ new Vue({
             fileList:[],
             parseLoading:false,
             ectdList:[],
+            sectionList: [],    // 章节列表
+            selectedDoc: '',     // 当前选中的文档ID
+            selectedSection: '' ,// 当前选中的章节ID
             newExperience: '',
             experiences: [],
             sourceSearchQuery: '', // 来源搜索关键词
@@ -49,7 +52,7 @@ new Vue({
     },
 
     created() {
-        this.initChapters();
+        this.getEctdList();
         this.fetchData();
     },
     mounted(){
@@ -68,18 +71,39 @@ new Vue({
     },
     methods: {
         // 初始化章节数据
-        initChapters() {
-            this.chapters = this.chapters.map(chapter => ({
-                ...chapter,
-                content: chapter.content || '暂无内容',
-                conclusion: {
-                    content: '暂无结论',
-                    references: [],
-                    experiences: [],
-                    rawData: null
-                }
-            }));
-        },
+        async handleDocChange(docId) {
+            this.selectedSection = ''; // 清空之前选择的章节
+            try {
+              const res = await this.getSectionId(docId);
+              this.sectionList = res.data;
+            } catch (error) {
+              console.error('获取章节失败:', error);
+            }
+          },
+      
+          async getSectionId(docId) {
+            // 调用后端接口获取章节列表
+            // return await this.$http.get('/api/get-sections', { params: { doc_id: docId } });
+            return ['3.1.1.S','3.2.2.S']
+
+          },
+      
+          async handleView() {
+            if (this.selectedDoc && this.selectedSection) {
+              const docKey = `${this.selectedDoc}${this.selectedSection}`;
+              console.log("docKey为:",docKey)
+              try {
+                await this.getContent(docKey);
+              } catch (error) {
+                console.error('获取内容失败:', error);
+              }
+            }
+          },
+      
+          async getContent(docKey) {
+            // 调用后端接口获取内容
+            // return await this.$http.get('/api/get-content', { params: { doc_key: docKey } });
+          },
 
         initSSE(){
             if(this.eventSource) {

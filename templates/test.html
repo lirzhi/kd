@@ -30,7 +30,7 @@
                         </el-menu-item>
                         <el-menu-item index="2">
                             <i class="el-icon-files"></i>
-                            <span>审批记录</span>+
+                            <span>审批记录</span>
                         </el-menu-item>
                         <el-menu-item index="3">
                             <i class="el-icon-files"></i>
@@ -41,34 +41,53 @@
 
                 <!-- 主内容区域 -->
                 <el-main class="main-content">
-                    <!-- 章节选择栏 -->
-                    <div class="chapter-selector">
-                        <el-select
-                            v-model="selectedChapterIndex"
-                            placeholder="请选择章节"
-                            class="chapter-select">
-                            <el-option
-                                v-for="(chapter, index) in chapters"
-                                :key="index"
-                                :label="'第' + chapter.label + '章'"
-                                :value="index">
-                            </el-option>
-                        </el-select>
-                    </div>
-                    <div class="chapter-selector">
-                        <el-select
-                            v-model="selectedChapterIndex"
-                            placeholder="请选择章节"
-                            class="chapter-select">
-                            <el-option
-                                v-for="(chapter, index) in chapters"
-                                :key="index"
-                                :label="'第' + chapter.label + '章'"
-                                :value="index">
-                            </el-option>
-                        </el-select>
-                    </div>
-
+                    <div class="doc-selector">
+                        <el-row type="flex" align="middle" :gutter="20">
+                          <el-col :span="8">
+                            <el-select
+                              v-model="selectedDoc"
+                              placeholder="请选择文档"
+                              class="doc-select"
+                              @change="handleDocChange"
+                              filterable
+                            >
+                              <el-option
+                                v-for="doc in ectdList"
+                                :key="doc.doc_id"
+                                :label="doc.file_name"
+                                :value="doc.doc_id"
+                              />
+                            </el-select>
+                          </el-col>
+                    
+                          <el-col :span="8">
+                            <el-select
+                              v-model="selectedSection"
+                              placeholder="请选择章节"
+                              class="doc-select"
+                              :disabled="!selectedDoc"
+                              filterable
+                            >
+                              <el-option
+                                v-for="section in sectionList"
+                                :key="section.section_id"
+                                :label="section.section_name"
+                                :value="section.section_id"
+                              />
+                            </el-select>
+                          </el-col>
+                    
+                          <el-col :span="4">
+                            <el-button 
+                              type="primary" 
+                              :disabled="!selectedSection"
+                              @click="handleView"
+                            >
+                              查看
+                            </el-button>
+                          </el-col>
+                        </el-row>
+                      </div>
                     <!-- 双栏内容区域 -->
                     <el-row  class="card-container" :gutter="20">
                         <!-- 左侧内容卡片 --> 
@@ -297,14 +316,14 @@
                     :auto-upload="false">
                     <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
                     <el-button style="margin-left: 10px;" size="small" type="success" @click="submitUpload">上传到服务器</el-button>
-                    <el-form ref="form" :model="uploadForm" label-width="80px">
+                    <!-- <el-form ref="form" :model="uploadForm" label-width="80px">
                         <el-form-item label="类别">
                           <el-input v-model="uploadForm.classification"></el-input>
                        </el-form-item>
                        <el-form-item label="影响范围">
                         <el-input v-model="uploadForm.affect_range"></el-input>
                      </el-form-item>
-                     </el-form>
+                     </el-form> -->
 
                     <div slot="tip" class="el-upload__tip">只能上传eCTD文件</div>
                 </el-upload>
@@ -329,8 +348,8 @@
                     label="解析状态"
                     width="120">
                     <template v-slot="scope">
-                    <el-tag :type="scope.row.parse_status === 1 ? 'success' : 'warning'">
-                        {{ scope.row.parse_status === 1 ? '已解析' : '未解析' }}
+                    <el-tag :type="scope.row.parse_status === true ? 'success' : 'warning'">
+                        {{ scope.row.parse_status === true ? '已解析' : '未解析' }}
                     </el-tag>
                     </template>
                 </el-table-column>
@@ -342,7 +361,7 @@
                     <el-button
                         size="mini"
                         type="primary"
-                        :disabled="scope.row.parse_status === 1"
+                        :disabled="scope.row.parse_status === true"
                         @click="handleParse(scope.row.doc_id)"
                         :loading="parseLoading[scope.row.doc_id]"
                     >解析</el-button>

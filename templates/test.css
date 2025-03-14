@@ -19,6 +19,18 @@ font-weight: bold;
 }
 }
 
+.doc-selector {
+    margin: 20px 0;
+  }
+  
+  .doc-select {
+    width: 100%;
+  }
+  
+  .el-row {
+    margin-bottom: 15px;
+  }
+
 .nav-sidebar {
 background: #f5f7fa;
 .menu-container {
