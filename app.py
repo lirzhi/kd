@@ -255,12 +255,14 @@ def parse_ectd_stream(doc_id):
             section_ids = []
 
             for idx, item in enumerate(data.get("content", []), start=1):
-                if item.get("content", "") == "" or len(item.get("content", "")) < 30:
+                if item.get("content", "") == "" or len(item.get("content", "")) < 10000:
+                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"                
                     continue
 
                 content = {
-                    "section_id": item.get("section_id"),
-                    "section_name": item.get("section_name")
+                    "section_id": item.get("section_id", ""),
+                    "section_name": item.get("section_name", ""),
+                    "content": []
                 }
 
                 llm_data = {"content": item.get("content")}
@@ -268,23 +270,27 @@ def parse_ectd_stream(doc_id):
                     ans = ask_llm_by_prompt_file("mutil_agents/prompts/data_process/eCTD_clean_prompt.j2", llm_data)
                 except Exception as e:
                     logging.error(f'Failed to clean file: {str(e)}')
-                    cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+                    content["content"].append(copy.deepcopy(item.get("content", "")))
+                    cleaned_data["content"].append(copy.deepcopy(content))
                     yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
                     continue
 
                 if ans is None or ans["response"] is None:
                     logging.error(f"clean error: ans is None")
-                    cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+                    content["content"].append(copy.deepcopy(item.get("content", "")))
+                    cleaned_data["content"].append(copy.deepcopy(content))
                     yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
                     continue
 
                 if not isinstance(ans["response"], dict):
-                    cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+                    content["content"].append(copy.deepcopy(item.get("content", "")))
+                    cleaned_data["content"].append(copy.deepcopy(content))
                     yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
                     continue
 
                 if ans["response"].get("content", None) is None:
-                    cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+                    content["content"].append(copy.deepcopy(item.get("content", "")))
+                    cleaned_data["content"].append(copy.deepcopy(content))
                     yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
                     continue
 
@@ -299,8 +305,9 @@ def parse_ectd_stream(doc_id):
 
             # Save cleaned data and update file information
             redis_conn = RedisDB()
-            for item in cleaned_data.get("content", []):
-                redis_conn.set(doc_id + item.get("section_id"), json.dumps(item), None)
+            for item_content in cleaned_data.get("content", []):
+                print(item_content)
+                redis_conn.set(doc_id + item_content.get("section_id"), json.dumps(item_content), None)
 
             rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
             FileService().update_file_chunk_by_id(doc_id, len(section_ids), ";".join(section_ids))
