@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import time
-from flask import Flask, Response, jsonify, request, redirect, url_for, render_template, flash
+from flask import Flask, Response, jsonify, request, redirect, stream_with_context, url_for, render_template, flash
 from flask_cors import CORS, cross_origin
 from sqlalchemy import text
 
@@ -231,6 +231,80 @@ def parse_ectd(doc_id):
     
     FileService().update_file_chunk_by_id(doc_id, len(section_ids), ";".join(section_ids))
     return ResponseMessage(200, 'File parsed successfully', cleaned_data).to_json()
+
+@app.route('/parse_ectd_stream/<doc_id>', methods=['GET', 'POST'])
+@cross_origin()
+def parse_ectd_stream(doc_id):
+    file_info = FileService().get_file_by_id(doc_id)
+    if file_info is None:
+        logging.error(f'File {doc_id} not found')
+        return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
+
+    if file_info.classification != 'eCTD':
+        logging.error(f'File {doc_id} is not an eCTD file')
+        return ResponseMessage(400, f'File {doc_id} is not an eCTD file', None).to_json()
+
+    file_path = file_info.file_path
+
+    def generate():
+        try:
+            parser = CTDPDFParser(file_path)
+            data = parser.parse()
+            total_sections = len(data.get("content", []))
+            cleaned_data = {"doc_id": doc_id, "content": []}
+            section_ids = []
+
+            for idx, item in enumerate(data.get("content", []), start=1):
+                if item.get("content", "") == "" or len(item.get("content", "")) < 30:
+                    continue
+
+                content = {
+                    "section_id": item.get("section_id"),
+                    "section_name": item.get("section_name")
+                }
+
+                llm_data = {"content": item.get("content")}
+                try:
+                    ans = ask_llm_by_prompt_file("mutil_agents/prompts/data_process/eCTD_clean_prompt.j2", llm_data)
+                except Exception as e:
+                    logging.error(f'Failed to clean file: {str(e)}')
+                    cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
+                    continue
+
+                if ans is None or ans["response"] is None:
+                    logging.error(f"clean error: ans is None")
+                    cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
+                    continue
+
+                if ans["response"].get("content", None) is None:
+                    cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
+                    continue
+
+                if not isinstance(ans["response"]["content"], list):
+                    ans["response"]["content"] = [ans["response"]["content"]]
+
+                content["content"] = ans["response"]["content"]
+                cleaned_data["content"].append(copy.deepcopy(content))
+                section_ids.append(item.get("section_id"))
+
+                yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
+
+            # Save cleaned data and update file information
+            redis_conn = RedisDB()
+            for item in cleaned_data.get("content", []):
+                redis_conn.set(doc_id + item.get("section_id"), json.dumps(item), None)
+
+            rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
+            FileService().update_file_chunk_by_id(doc_id, len(section_ids), ";".join(section_ids))
+
+        except Exception as e:
+            logging.error(f'Failed to parse file: {str(e)}')
+            yield json.dumps({"error": f"Failed to parse file: {str(e)}"}) + "\n"
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 @app.route('/delete_ectd/<doc_id>', methods=['GET','POST'])
 @cross_origin()

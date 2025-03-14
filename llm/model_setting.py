@@ -1,6 +1,6 @@
 
 LLM = {
-    "model_use": "glm",
+    "model_use": "qwen",
     "models": { 
         "deepseek": {
             "model": "deepseek-reasoner",
