@@ -3,10 +3,6 @@ new Vue({
     el: '#app',
     data() {
         return {
-            chapters: [
-                { label: '3.3.1', value: '3.3.1' },
-                { label: '3.3.2', value: '3.3.2' }
-            ],
             content:"",
             report:"",
             isExpanded: false, // 控制搜索框展开状态
@@ -21,10 +17,6 @@ new Vue({
             isSourceView: false,
             expDialogVisible: false,
             uploadDialogVisible: false,
-            uploadForm:{
-                classfication:"",
-                affectRange:""
-            },
             fileList:[],
             parseLoading:false,
             ectdList:[],
@@ -53,7 +45,7 @@ new Vue({
 
     created() {
         this.getEctdList();
-        this.fetchData();
+        // this.fetchData();
     },
     mounted(){
         /// 监听外部点击事件
@@ -65,17 +57,14 @@ new Vue({
         document.removeEventListener('click', this.clickOutsideHandler);
       },
     watch: {
-        selectedChapterIndex() {
-        this.loadSources()
-        }
+       
     },
     methods: {
         // 初始化章节数据
         async handleDocChange(docId) {
             this.selectedSection = ''; // 清空之前选择的章节
             try {
-              const res = await this.getSectionId(docId);
-              this.sectionList = res.data;
+             this.getSectionId(docId);
             } catch (error) {
               console.error('获取章节失败:', error);
             }
@@ -83,8 +72,20 @@ new Vue({
       
           async getSectionId(docId) {
             // 调用后端接口获取章节列表
-            // return await this.$http.get('/api/get-sections', { params: { doc_id: docId } });
-            return ['3.1.1.S','3.2.2.S']
+            try {
+                const response = await fetch(`http://127.0.0.1:5000//get_ectd_sections/${docId}`, {
+                    method: 'POST',
+                });
+                
+                const res = await response.json();
+                console.log("data为：",res)
+                if (res.code === 200) {
+                    this.sectionList = res.data;
+                }
+            } catch (error) {
+                console.error('获取章节列表失败:', error);
+                this.$message.error('获取章节列表失败，请重试');
+            }
 
           },
       
@@ -99,10 +100,30 @@ new Vue({
               }
             }
           },
+          //获取章节内容
       
-          async getContent(docKey) {
-            // 调用后端接口获取内容
-            // return await this.$http.get('/api/get-content', { params: { doc_key: docKey } });
+          async getContent() {
+            if (this.selectedDoc && this.selectedSection) {
+                const docKey = `${this.selectedDoc}${this.selectedSection}`;
+                console.log("docKey为:",docKey)
+                try {
+                    const response = await fetch(`http://127.0.0.1:5000//get_ectd_content/${docKey}`, {
+                        method: 'POST',
+                    });
+                    
+                    const res = await response.json();
+                    if (res.code === 200) {
+                        // 解析data字段为JSON对象
+                        const data = JSON.parse(res.data);
+                        // 获取content字段
+                        const content = data.content;
+                        console.log("data为：",content)
+                        this.content = content;
+                    }
+                } catch (error) {
+                  console.error('获取内容失败:', error);
+                }
+              }  
           },
 
         initSSE(){
@@ -138,6 +159,7 @@ new Vue({
             // };
         },
         handleSSEComplete() {
+            this.fetchData();
             this.report = this.results.final_report[0].report.content;
             this.startTypewriterEffect();
             if(this.eventSource) {
@@ -202,44 +224,6 @@ new Vue({
                 type: 'info'
             });
         },
-        // 状态显示格式化
-        statusType(status) {
-            const statusMap = {
-            1: 'info',   // 上传中
-            2: 'success', // 可解析
-            3: 'danger'   // 已失效
-            };
-            return statusMap[status] || 'info';
-        },
-
-        statusText(status) {
-            const textMap = {
-            1: '已上传',
-            2: '可解析',
-            3: '已失效'
-            };
-            return textMap[status] || '未知状态';
-        },
-        // async handleUpload(file) {
-        //     const formData = new FormData();
-        //     const file = fileList[0];
-        //     formData.append('file', file.raw);
-        //     formData.append('classification', 'eCTD'); 
-        //     formData.append('affect_range', 'eCTD'); 
-        //     try {
-        //         const res = await this.$http.post('http://127.0.0.1:5000/upload', formData, {
-        //         headers: {
-        //             'Content-Type': 'multipart/form-data'
-        //         }
-        //         });
-                
-        //         if (res.status === 200) {
-        //         this.$message.success('上传成功');
-        //         }
-        //     } catch (error) {
-        //         this.handleApiError(error, '文件上传失败');
-        //     }
-        // },
         //获取Ectd列表
         async getEctdList() {
             try {
@@ -248,10 +232,10 @@ new Vue({
                     headers: {'Content-Type': 'application/json'},
                 });
                 
-                const data = await response.json();
-                console.log("data为：",data)
-                if (data.code === 200) {
-                    this.ectdList = data.data;
+                const res = await response.json();
+                console.log("data为：",res)
+                if (res.code === 200) {
+                    this.ectdList = res.data;
                 }
             } catch (error) {
                 console.error('获取Ectd列表失败:', error);
@@ -311,15 +295,17 @@ new Vue({
         // 生成章节结论
         async fetchData() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/test_single_review', {
+                const response = await fetch('http://127.0.0.1:5000/test', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
                 });
                 
-                const data = await response.json();
-                if (data.code === 200) {
-                    this.results = data.data;
-                    this.content = this.results.content;
+                const res = await response.json();
+                if (res.code === 200) {
+                    this.results = res.data;
+                    console.log("this.results:",this.results)
+                    this.report = this.results.final_report[0].report.content;
+                    this.startTypewriterEffect();
+                    console.log("this.report:",this.report)
                 }
             } catch (error) {
                 console.error('生成结论失败:', error);
@@ -328,12 +314,12 @@ new Vue({
         },
 
         // 生成章节结论
-        async generateReport(index) {
+        async generateReport() {
             try {
                 this.isGenerating = true
-                this.streamContent = ""
-                    
+                this.streamContent = "" 
                 // 初始化SSE连接
+                this.fetchData();
                 this.initSSE()           
             } catch (error) {
                 console.error('生成结论失败:', error);
@@ -381,70 +367,10 @@ new Vue({
 
         // 生成章节结论
         async generateConclusion(index) {
-            try {
-                const chapter = this.chapters[index];
-                const response = await fetch('http://127.0.0.1:5000/test', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({content: chapter.content})
-                });
-                
-                const data = await response.json();
-                if (data.code === 200) {
-                    this.$set(this.chapters, index, {
-                        ...chapter,
-                        conclusion: {
-                            content: data.data.final_report,
-                            references: data.data.final_reference || [],
-                            experiences: chapter.conclusion.experiences,
-                            rawData: data.data
-                        }
-                    });
-                    this.$message.success(`第${chapter.label}章结论生成成功`);
-                }
-            } catch (error) {
-                console.error('生成结论失败:', error);
-                this.$message.error('结论生成失败，请重试');
-            }
         },
 
         // 重新生成结论
-        async regenerate() {
-            try {
-                const chapter = this.chapters[0]; // 假设只重新生成第一个章节的结论
-                const tempData = {
-                    content: chapter.content,
-                    original_report: chapter.conclusion.content,
-                    content_split_reference_list: chapter.conclusion.references,
-                    final_experience: chapter.conclusion.experiences,
-                    content_split_conclusion_list: chapter.conclusion.rawData?.content_split_report_list || []
-                };
-
-                const response = await fetch('http://127.0.0.1:5000/regenerate_report', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ content: tempData })
-                });
-
-                const data = await response.json();
-                if (data.code === 200) {
-                    this.$set(this.chapters, 0, {
-                        ...chapter,
-                        conclusion: {
-                            ...chapter.conclusion,
-                            content: data.data.report,
-                            rawData: {
-                                ...chapter.conclusion.rawData,
-                                final_report: data.data.report
-                            }
-                        }
-                    });
-                    this.$message.success(`第${chapter.label}章结论重新生成成功`);
-                }
-            } catch (error) {
-                console.error('重新生成失败:', error);
-                this.$message.error('重新生成失败，请重试');
-            }
+        async regenerate() {  
         },
 
         // 显示结论来源
@@ -531,50 +457,17 @@ new Vue({
         },
         // 搜索来源
         async searchSources() {
-        if (!this.sourceSearchQuery.trim()) {
-            this.filteredSources = [...this.sources]
-            return
-        }
-
-        try {
-            const response = await this.$http.post('/sources/search', {
-            query: this.sourceSearchQuery,
-            chapter: this.selectedChapterIndex + 1
-            })
-            
-            if (response.data.code === 200) {
-            this.filteredSources = response.data.data
-            }
-        } catch (error) {
-            this.$message.error('搜索失败')
-        }
+        
         },
 
         // 删除来源
         async deleteSource(index) {
-        try {
-            await this.$http.delete(`/sources/${this.filteredSources[index].id}`)
-            this.filteredSources.splice(index, 1)
-            this.sources = this.sources.filter(
-            s => s.id !== this.filteredSources[index].id
-            )
-            this.$message.success('删除成功')
-        } catch (error) {
-            this.$message.error('删除失败')
-        }
+        
         },
 
         // 初始化来源数据
         async loadSources() {
-        try {
-            const response = await this.$http.get(`/sources/${this.selectedChapterIndex}`)
-            if (response.data.code === 200) {
-            this.sources = response.data.data
-            this.filteredSources = [...this.sources]
-            }
-        } catch (error) {
-            this.$message.error('加载来源数据失败')
-        }
+        
         },
     },
     }

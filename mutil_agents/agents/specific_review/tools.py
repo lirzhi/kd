@@ -46,7 +46,7 @@ class Tools:
             value = value.get("报告要求", [])
             
         # 从非结构化数据寻找指导原则
-        if principle_name is not None:
+        if module_name is not None:
             query = f"{module_name}部分包含什么指导要求 ？"
             search_info = KDService().search_by_query(query=query)
             data = {
