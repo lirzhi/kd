@@ -255,7 +255,7 @@ def parse_ectd_stream(doc_id):
             section_ids = []
 
             for idx, item in enumerate(data.get("content", []), start=1):
-                if item.get("content", "") == "" or len(item.get("content", "")) < 10000:
+                if item.get("content", "") == "" or len(item.get("content", "")) < 70:
                     yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"                
                     continue
 
