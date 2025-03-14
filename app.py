@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import time
@@ -13,13 +14,13 @@ from mutil_agents.memory.review_state import ReviewState
 from utils.common_util import ResponseMessage, get_handle_info
 from utils.file_util import ensure_dir_exists, rewrite_json_file
 from utils.parser.ctd_parser import CTDPDFParser
-from utils.parser.parser_manager import ParserManager
+from utils.parser.parser_manager import CHUNK_BASE_PATH, ParserManager
 from mutil_agents.agent import graph
 import os
 
-eCTD_FILE_PATH = 'data/parser/eCTD/'
+eCTD_FILE_DIR = 'data/parser/eCTD/'
 ensure_dir_exists('log')
-ensure_dir_exists(eCTD_FILE_PATH)
+ensure_dir_exists(eCTD_FILE_DIR)
 logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s',
                     level=logging.INFO,
                     filename='log/server.log',
@@ -50,6 +51,61 @@ def upload_file():
         flash(f'File {file.filename} uploaded successfully! doc_id: {info}')
         return ResponseMessage(200, f'File {file.filename} uploaded successfully! doc_id: {info}', {"file_name": file.filename, "doc_id": info}).to_json()
     return render_template('upload.html')
+
+@app.route('/delete_file/<doc_id>', methods=['GET', 'POST'])
+def delete_file(doc_id):
+    file_info = FileService().get_file_by_id(doc_id)
+    if file_info is None:
+        logging.error(f'File {doc_id} not found')
+        return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
+    if os.path.exists(file_info.file_path):
+        try:
+            os.remove(file_info.file_path)
+        except Exception as e:
+            logging.error(f'Failed to delete file: {str(e)}')
+            return ResponseMessage(400, f'Failed to delete local file: {str(e)}', None).to_json()
+    if file_info.is_chunked != 1:
+        return ResponseMessage(200, f'File {doc_id} deleted successfully', None).to_json()
+    parsed_file_path=os.path.join(CHUNK_BASE_PATH, file_info.file_type, file_info.classification, "chunks", file_info.file_name)
+    if os.path.exists(parsed_file_path):
+        try:
+            os.remove(parsed_file_path)
+        except Exception as e:
+            logging.error(f'Failed to delete file: {str(e)}')
+            return ResponseMessage(400, f'Failed to delete local parsed file: {str(e)}', None).to_json()
+    # 删除向量数据
+    ids = file_info.chunk_ids.split(";")
+    ans = KDService().delete_chunk_from_vector(ids)
+    if ans == None:
+        logging.error('Failed to delete vector data')
+        return ResponseMessage(400, 'Failed to delete vector data', None).to_json()
+    logging.info(f'{ans}: document fragments successfully deleted from vector database')
+    
+    flag = FileService().delete_file_by_id(doc_id)
+    if not flag:
+        logging.warning(f'Failed to delete file {doc_id}')
+        return ResponseMessage(400, f'Failed to delete file {doc_id}', None).to_json()
+    return ResponseMessage(200, f'File {doc_id} deleted successfully').to_json()
+
+@app.route('/get_file_by_class/<classfication>', methods=['GET', 'POST'])
+def get_file_by_class(classfication):
+    file_list = FileService().get_file_by_classification(classfication)
+    data_info = []
+    for item in file_list:
+        obj = {}
+        obj["doc_id"] = item.doc_id
+        obj["file_name"] = item.file_name
+        obj["parse_status"] = item.is_chunked
+        data_info.append(obj)
+    return ResponseMessage(200, 'Get file list successfully', data_info).to_json()
+
+@app.route('/get_file_classification', methods=['GET', 'POST'])
+def get_file_classification():
+    ans =  FileService().get_file_classification()
+    list_info = []
+    for item in ans:
+        list_info.append(item[0])
+    return ResponseMessage(200, 'Get file classification successfully', list_info).to_json()
 
 @app.route('/add_to_kd/<doc_id>', methods=['GET','POST'])
 def add_to_kd(doc_id):
@@ -132,18 +188,49 @@ def parse_ectd(doc_id):
     try:
         parser = CTDPDFParser(file_path)
         data = parser.parse()
-        data['doc_id'] = doc_id
-        section_ids = []
-        redis_conn = RedisDB()
-        for item in data.get("content", []):
-            redis_conn.set(doc_id + item.get("section_id"), json.dumps(item), None) 
-            section_ids.append(item.get("section_id")) 
-        rewrite_json_file(f'{eCTD_FILE_PATH}{doc_id}.json', data)
     except Exception as e:
         logging.error(f'Failed to parse file: {str(e)}')
         return ResponseMessage(400, f'Failed to parse file: {str(e)}', None).to_json()
+    cleaned_data = {}
+    cleaned_data['doc_id'] = doc_id
+    cleaned_data['content'] = []
+    content = {}
+    for item in data.get("content", []):
+        if item.get("content", "") == "" or len(item.get("content", "")) < 30:
+            continue
+        content["section_id"] = item.get("section_id")
+        content["section_name"] = item.get("section_name")
+        llm_data = {
+            "content": item.get("content"),
+        }
+        try:
+            ans = ask_llm_by_prompt_file("mutil_agents/prompts/data_process/eCTD_clean_prompt.j2", llm_data)
+        except Exception as e:
+            logging.error(f'Failed to clean file: {str(e)}')
+            cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+            continue
+            
+        if ans == None or ans["response"] == None:
+            logging.error(f"clean error: ans is None") 
+            cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+            continue
+        print(f"ans['response']:{ans['response']}")
+        if ans["response"].get("content", None) == None:
+            cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+            continue
+        if type(ans["response"]["content"]) != list:
+            ans["response"]["content"] = [ans["response"]["content"]]
+        content["content"] = ans["response"]["content"]
+        cleaned_data["content"].append(copy.deepcopy(content))
+    section_ids = []
+    redis_conn = RedisDB()
+    for item in cleaned_data.get("content", []):
+        redis_conn.set(doc_id + item.get("section_id"), json.dumps(item), None) 
+        section_ids.append(item.get("section_id")) 
+    rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
+    
     FileService().update_file_chunk_by_id(doc_id, len(section_ids), ";".join(section_ids))
-    return ResponseMessage(200, 'File parsed successfully', data).to_json()
+    return ResponseMessage(200, 'File parsed successfully', cleaned_data).to_json()
 
 @app.route('/delete_ectd/<doc_id>', methods=['GET','POST'])
 @cross_origin()
@@ -153,28 +240,30 @@ def delete_ectd(doc_id):
     if file_info is None:
         logging.error(f'File {doc_id} not found')
         return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
-    file_path = file_info.file_path
-    flag = FileService().delete_file_by_id(doc_id)
-    if not flag:
-        logging.error(f'Failed to delete file {doc_id}')
-        return ResponseMessage(400, f'Failed to delete file {doc_id}', None).to_json()    
-    try:
-        os.remove(file_path)
-    except Exception as e:
-        logging.error(f'Failed to delete file: {str(e)}')
-        return ResponseMessage(400, f'Failed to delete local file: {str(e)}', None).to_json()
+    file_path = file_info.file_path  
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except Exception as e:
+            logging.error(f'Failed to delete file: {str(e)}')
+            return ResponseMessage(400, f'Failed to delete local file: {str(e)}', None).to_json()
     
     if file_info.is_chunked != 1:
         return ResponseMessage(200, 'File deleted successfully', None).to_json()
-    try:
-        os.remove(f"{eCTD_FILE_PATH}{doc_id}.json")
-    except Exception as e:
-        logging.error(f'Failed to delete file: {str(e)}')
-        return ResponseMessage(400, f'Failed to delete local parsed file: {str(e)}', None).to_json()
+    if os.path.exists(f'{eCTD_FILE_DIR}{doc_id}.json'):
+        try:
+            os.remove(f"{eCTD_FILE_DIR}{doc_id}.json")
+        except Exception as e:
+            logging.error(f'Failed to delete file: {str(e)}')
+            return ResponseMessage(400, f'Failed to delete local parsed file: {str(e)}', None).to_json()
     redis_conn = RedisDB()
     keys = redis_conn.keys(doc_id + "*")
     for key in keys:
         redis_conn.delete(key)
+    flag = FileService().delete_file_by_id(doc_id)
+    if not flag:
+        logging.error(f'Failed to delete file {doc_id}')
+        return ResponseMessage(400, f'Failed to delete file {doc_id}', None).to_json()  
     return ResponseMessage(200, 'File deleted successfully', None).to_json()
 
 @app.route('/get_ectd_info_list', methods=['GET','POST'])

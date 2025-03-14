@@ -48,6 +48,9 @@ class VectorDB:
     def save(self, data: List[Dict[str, int]]):
         res = self.client.insert(collection_name="test_collection", data=data)
         return res
+    
+    def deleteByIds(self, doc_ids: list):
+        return self.client.delete(collection_name="test_collection", ids=doc_ids)
 
     def search(
         self,
