@@ -38,11 +38,11 @@ class FileService:
         finally:
             self.db_session.close()
     
-    def update_file_chunk_by_id(self, doc_id, chunk_size):
+    def update_file_chunk_by_id(self, doc_id, chunk_size, v_chunk_ids):
         try:
             self.db_session.begin()
             update_count = self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id) \
-            .update({"is_chunked": True, "chunk_size": chunk_size})
+            .update({"is_chunked": True, "chunk_size": chunk_size, "chunk_ids": v_chunk_ids})
             self.db_session.commit()
             # Check if the update operation was successful
             if update_count > 0:

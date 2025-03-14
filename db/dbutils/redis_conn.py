@@ -125,6 +125,15 @@ class RedisDB:
             logging.warning("RedisDB.sadd " + str(key) + " got exception: " + str(e))
             self.__open__()
         return False
+    
+    def keys(self, pattern: str):
+        try:
+            res = self.REDIS.keys(pattern)
+            return res
+        except Exception as e:
+            logging.warning("RedisDB.keys " + str(pattern) + " got exception: " + str(e))
+            self.__open__()
+        return None
 
     def srem(self, key: str, member: str):
         try:
