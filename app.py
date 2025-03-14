@@ -278,6 +278,11 @@ def parse_ectd_stream(doc_id):
                     yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
                     continue
 
+                if not isinstance(ans["response"], dict):
+                    cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
+                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
+                    continue
+
                 if ans["response"].get("content", None) is None:
                     cleaned_data["content"].append(copy.deepcopy(item.get("content", "")))
                     yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
@@ -299,11 +304,9 @@ def parse_ectd_stream(doc_id):
 
             rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
             FileService().update_file_chunk_by_id(doc_id, len(section_ids), ";".join(section_ids))
-
         except Exception as e:
             logging.error(f'Failed to parse file: {str(e)}')
             yield json.dumps({"error": f"Failed to parse file: {str(e)}"}) + "\n"
-
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 @app.route('/delete_ectd/<doc_id>', methods=['GET','POST'])
