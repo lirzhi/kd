@@ -99,6 +99,15 @@ class RedisDB:
             logging.warning("RedisDB.get " + str(k) + " got exception: " + str(e))
             self.__open__()
 
+    def delete(self, k):
+        if not self.REDIS:
+            return
+        try:
+            return self.REDIS.delete(k)
+        except Exception as e:
+            logging.warning("RedisDB.delete " + str(k) + " got exception: " + str(e))
+            self.__open__()
+
     def set_obj(self, k, obj, exp=3600):
         try:
             self.REDIS.set(k, json.dumps(obj, ensure_ascii=False), exp)

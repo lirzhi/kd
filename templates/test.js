@@ -17,9 +17,19 @@ new Vue({
             isSourceView: false,
             expDialogVisible: false,
             uploadDialogVisible: false,
+            uploadForm:{
+                classification:"",
+                affect_range:""
+
+            },
+            dialogHeight: `${window.innerHeight * 0.66}px`, // 弹窗高度
+            selectedCategory: '',      // 当前选中的分类
+            categoryOptions: [],       // 分类选项
+            filteredList: [],          // 过滤后的列表
+            // 其他原有数据保持不变
             fileList:[],
             parseLoading:false,
-            ectdList:[],
+            ectdList:[],//文件列表
             sectionList: [],    // 章节列表
             selectedDoc: '',     // 当前选中的文档ID
             selectedSection: '' ,// 当前选中的章节ID
@@ -175,7 +185,7 @@ new Vue({
         // 文件上传方法
         showUploadDialog(){
             this.uploadDialogVisible = true;
-            this.getEctdList();
+            this.getClassification();
         },
         //上传文件
         async submitUpload() {
@@ -183,8 +193,10 @@ new Vue({
             const file = this.fileList[0];
             console.log("file为",file.raw)
             formData.append('file', file.raw);
-            formData.append('classification', 'eCTD'); 
-            formData.append('affect_range', 'eCTD');
+            const classification = this.uploadForm.classification;
+            const affect_range = this.uploadForm.affect_range;
+            formData.append('classification', classification);
+            formData.append('affect_range', affect_range);
             console.log("formData为",formData)
             try {
                 const res = await fetch('http://127.0.0.1:5000/upload_file',  {
@@ -195,8 +207,9 @@ new Vue({
                 
                 if (res.status === 200) {
                   this.$message.success('上传成功');
-                  this.fileList = [],
-                  this.getEctdList();
+                  this.fileList = [];
+                //   this.getEctdList();
+                //   this.handleFilter();
                 }
             } catch (error) {
                 this.$message.error('文件上传失败');
@@ -224,6 +237,51 @@ new Vue({
                 type: 'info'
             });
         },
+        //获取类别
+        async getClassification() {
+            // 调用后端接口获取章节列表
+            try {
+                const response = await fetch(`http://127.0.0.1:5000/get_file_classification`, {
+                    method: 'POST',
+                });
+                
+                const res = await response.json();
+                console.log("data为：",res)
+                if (res.code === 200) {
+                    this.categoryOptions = res.data;
+                }
+            } catch (error) {
+                console.error('获取类别列表失败:', error);
+                this.$message.error('获取类别列表失败，请重试');
+            }
+
+          },
+        // 过滤列表
+        async handleFilter() {
+            const classification = this.selectedCategory;
+            console.log("classification:",classification)
+            try {
+                const response = await fetch(`http://127.0.0.1:5000/get_file_by_class/${classification}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                });
+                
+                const res = await response.json();
+                console.log("data为：",res)
+                if (res.code === 200) {
+                    // 添加分类字段到每个条目
+                    this.filteredList = res.data.map(item => ({
+                        ...item,
+                        doc_classification: classification // 注意字段名与表格列prop对应
+                    }));
+                    console.log("处理后数据：", this.filteredList);
+                }
+            } catch (error) {
+                console.error('获取文件列表失败:', error);
+                this.$message.error('获取文件列表失败，请重试');
+            } 
+            
+        },
         //获取Ectd列表
         async getEctdList() {
             try {
@@ -242,7 +300,7 @@ new Vue({
                 this.$message.error('获取Ectd列表失败，请重试');
             }
           },
-      
+          //无sse
           async handleParse(docId) {
             try {
               
@@ -256,6 +314,7 @@ new Vue({
               if (res.code === 200) {
                 this.$message.success('解析成功');
                 await this.getEctdList();
+                await this.handleFilter();
               } else {
                 this.$message.error(res.error);
               }
@@ -263,7 +322,6 @@ new Vue({
            
             }
           },
-      
           async handleDelete(docId) {
             try {
               await this.$confirm('确认删除该文件？此操作不可恢复！', '警告', {
@@ -281,6 +339,7 @@ new Vue({
               
               if (res.code === 200) {
                 this.$message.success('删除成功');
+                await this.handleFilter();
                 await this.getEctdList();
               } else {
                 this.$message.error(res.error);
@@ -449,6 +508,9 @@ new Vue({
             this.$message.info(`搜索内容: ${this.searchQuery}`);
         },
         handleMenuSelect(index) {
+            if(index === '2'){
+                this.showExpDialog();
+            }
             // 处理菜单选择
             if(index === '3') {
                 this.showUploadDialog();

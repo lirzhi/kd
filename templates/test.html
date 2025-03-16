@@ -30,11 +30,11 @@
                         </el-menu-item>
                         <el-menu-item index="2">
                             <i class="el-icon-files"></i>
-                            <span>审批记录</span>
+                            <span>审评要求</span>
                         </el-menu-item>
                         <el-menu-item index="3">
                             <i class="el-icon-files"></i>
-                            <span>eCTD管理</span>
+                            <span>文件管理</span>
                         </el-menu-item>
                     </el-menu>
                 </el-aside>
@@ -206,7 +206,7 @@
                                             生成报告
                                         </el-button>
                                         <el-button type="info" @click="showSource">结论来源</el-button>
-                                        <el-button type="warning" @click="showExpDialog">经验管理</el-button>
+                                        <!-- <el-button type="warning" @click="showExpDialog">经验管理</el-button> -->
                                         <el-button type="danger" @click="regenerate">重新生成</el-button>
                                     </div>
                                 </div>
@@ -298,52 +298,61 @@
             </div>
         </el-dialog>
         <el-dialog
-            title="eCTD管理"
+            title="文件管理"
             :visible.sync="uploadDialogVisible"
-            width="60%">
-            <!-- @opened="fetchECTDList"> -->
-            <!-- 文件上传区域 -->
-            <div class="upload-section">
+            width="60%"
+            :height="dialogHeight"
+            custom-class="ectd-dialog"
+            >
+            <!-- 自定义标题样式 -->
+            <template slot="title">
+                <div class="dialog-title">文件管理</div>
+            </template>
+
+            <!-- 文件上传卡片 -->
+            <el-card class="dialog-card">
+                <div slot="header" class="card-header">
+                <span>文件上传</span>
+                </div>
+                <el-form ref="form" :model="uploadForm" label-width="80px">
+                <el-form-item label="类别">
+                    <el-input v-model="uploadForm.classification"></el-input>
+                </el-form-item>
+                <el-form-item label="影响范围">
+                    <el-input v-model="uploadForm.affect_range"></el-input>
+                </el-form-item>
+                </el-form>
+                
                 <el-upload
-                    class="upload-demo"
-                    ref="upload"
-                    action=""
-                    :on-preview="handlePreview"
-                    :on-remove="handleRemove"
-                    :on-change="handleChange"
-                    :before-upload="beforeUpload"
-                    :file-list="fileList"
-                    :auto-upload="false">
-                    <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
-                    <el-button style="margin-left: 10px;" size="small" type="success" @click="submitUpload">上传到服务器</el-button>
-                    <!-- <el-form ref="form" :model="uploadForm" label-width="80px">
-                        <el-form-item label="类别">
-                          <el-input v-model="uploadForm.classification"></el-input>
-                       </el-form-item>
-                       <el-form-item label="影响范围">
-                        <el-input v-model="uploadForm.affect_range"></el-input>
-                     </el-form-item>
-                     </el-form> -->
-
-                    <div slot="tip" class="el-upload__tip">只能上传eCTD文件</div>
-                </el-upload>
-            </div>
-
-            <!-- eCTD列表 -->
-            <el-table
-                :data="ectdList"
-                style="width: 100%"
-                border
+                class="upload-demo"
+                ref="upload"
+                action=""
+                :auto-upload="false"
+                :file-list="fileList"
+                :before-upload="beforeUpload"
+                :on-change="handleChange"
                 >
-                <el-table-column
-                prop="doc_id"
-                label="文档ID"
-                width="180">
-                </el-table-column>
-                <el-table-column
-                prop="file_name"
-                label="文件名称">
-                </el-table-column>
+                <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
+                <el-button style="margin-left: 10px;" size="small" type="success" @click="submitUpload">上传到服务器</el-button>
+                <!-- <div slot="tip" class="el-upload__tip">只能上传eCTD文件（不超过500MB）</div> -->
+                </el-upload>
+            </el-card>
+
+            <!-- 文件列表卡片 -->
+            <el-card class="dialog-card">
+                <div slot="header" class="card-header filter-header">
+                    <div class="filter-container">
+                        <el-select v-model="selectedCategory" placeholder="选择类别" clearable style="width: 200px; margin-right: 15px;">
+                        <el-option v-for="item in categoryOptions" :key="item" :label="item" :value="item"/>
+                        </el-select>
+                        <el-button type="primary" @click="handleFilter":disabled="!selectedCategory">查看</el-button>
+                    </div>
+                </div>
+
+                <el-table :data="filteredList" style="width: 100%" border>
+                <el-table-column prop="doc_classification" label="文档类别" width="180"> </el-table-column>
+                <el-table-column prop="doc_id" label="文档ID" width="180"></el-table-column>
+                <el-table-column prop="file_name"label="文件名称"></el-table-column>
                 <el-table-column
                     label="解析状态"
                     width="120">
@@ -353,10 +362,7 @@
                     </el-tag>
                     </template>
                 </el-table-column>
-                <el-table-column
-                    label="操作"
-                    width="200"
-                    fixed="right">
+                <el-table-column label="操作" width="200"fixed="right">
                     <template v-slot="scope">
                     <el-button
                         size="mini"
@@ -365,14 +371,11 @@
                         @click="handleParse(scope.row.doc_id)"
                         :loading="parseLoading[scope.row.doc_id]"
                     >解析</el-button>
-                    <el-button
-                        size="mini"
-                        type="danger"
-                        @click="handleDelete(scope.row.doc_id)"
-                    >删除</el-button>
+                    <el-button size="mini" type="danger" @click="handleDelete(scope.row.doc_id)">删除</el-button>
                     </template>
                 </el-table-column>
             </el-table>
+            </el-card>
         </el-dialog>
        
     </div>

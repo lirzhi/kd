@@ -34,7 +34,15 @@ class FileService:
 
     def delete_file_by_id(self, doc_id):
         try:
-            return self.db_session.delete(models.FileInfo).filter_by(doc_id=doc_id)
+            ans = self.db_session.query(models.FileInfo).filter_by(doc_id=doc_id).delete()
+            self.db_session.commit()
+            return ans
+        finally:
+            self.db_session.close()
+
+    def get_file_classification(self):
+        try:
+           return self.db_session.query(models.FileInfo.classification).distinct().all()
         finally:
             self.db_session.close()
     

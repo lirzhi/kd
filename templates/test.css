@@ -176,6 +176,46 @@ background: #f0f2f5;
 
 }
 }
+/* 弹窗样式 */
+/* 标题居中 */
+.dialog-title {
+    text-align: center;
+    font-weight: 600;
+    font-size: 18px;
+  }
+  
+  /* 卡片样式 */
+  .dialog-card {
+    margin-bottom: 20px;
+    width: 100%;
+  }
+  
+  .card-header {
+    font-weight: 500;
+  }
+  
+  /* 过滤容器 */
+  .filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .filter-container {
+    display: flex;
+    align-items: center;
+  }
+  
+  /* 弹窗高度控制 */
+  ::v-deep .ectd-dialog {
+    height: 66vh;
+  }
+  
+  ::v-deep .el-dialog__body {
+    max-height: calc(66vh - 110px);
+    overflow-y: auto;
+    padding: 15px 20px;
+  }
 .exp-dialog {
 height: 66vh;
 border-radius: 12px;

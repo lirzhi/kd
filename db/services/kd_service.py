@@ -35,7 +35,9 @@ class KDService:
         }
         return self.es_conn.delete(condition=condition, indexName=index_name, knowledgebaseId=kd_id)
         
-
+    def delete_chunk_from_vector(self, ids):
+        return self.vector_db.deleteByIds(ids)
+    
     def search_by_query(self, query, kb_ids=[]):
         # 构建查询条件
         condition = {
