@@ -30,6 +30,7 @@ new Vue({
             fileList:[],
             parseLoading:false,
             eventSourceParse:null,//解析
+            abortController:null,
             parseProgress:0,
             showParseProgress:false,
             ectdList:[],//文件列表
@@ -75,6 +76,11 @@ new Vue({
         parseProgress(){
 
         }      
+    },
+    computed:{
+        progressStatus() {
+            return this.parseProgress === 100 ? 'success' : 'primary'
+          }
     },
     methods: {
         // 初始化章节数据
@@ -216,7 +222,7 @@ new Vue({
                   this.$message.success('上传成功');
                   this.fileList = [];
                 //   this.getEctdList();
-                //   this.handleFilter();
+                  this.handleFilter();
                 }
             } catch (error) {
                 this.$message.error('文件上传失败');
@@ -330,39 +336,40 @@ new Vue({
         //     }
         //   },
         async handleParse(docClassification,docId){
-            this.showParseProgress = true;
             console.log("docId为：",docId);
             if(docClassification == 'eCTD') this.handleEctdParse(docId);
             else this.handleFileParse(docId);
         },
         //解析进度
         async handleEctdParseSSE(docId){
-            if(this.eventSourceParse) {
-                this.eventSourceParse = null
-            }
-            this.eventSourceParse = new EventSource(`http://127.0.0.1:5000/parse_ectd_stream//${docId}`);
-            this.eventSourceParse.onmessage = (e) => {
-                
-                const msg = JSON.parse(e.data);
-                console.log('Received log:', msg);
-                const { cur_section, total_sections } = JSON.parse(e.data)
-                this.parseLoading = cur_section / total_sections *100;
-                // 自动滚动到底部
-                // this.$nextTick(() => {
-                //     const textarea = document.getElementById('streamConsole')
-                //     if(textarea) {
-                //         textarea.scrollTop = textarea.scrollHeight
-                //     }
-                // })
-            };
-            this.eventSourceParse.addEventListener('complete', () => {
-                this.handleParseSSEComplete()
-            })
+            this.showParseProgress = true;
 
-            this.eventSourceParse.onerror = (e) => {
-                console.error('SSE error:', e)
-                this.handleParseSSEComplete()
-            }
+            // if(this.eventSourceParse) {
+            //     this.eventSourceParse = null
+            // }
+            // this.eventSourceParse = new EventSource(`http://127.0.0.1:5000/parse_ectd_stream/${docId}`);
+            // this.eventSourceParse.onmessage = (e) => {
+                
+            //     const msg = JSON.parse(e.data);
+            //     console.log('Received log:', msg);
+            //     const { cur_section, total_section } = msg
+            //     this.parseLoading = cur_section / total_section *100;
+            //     // 自动滚动到底部
+            //     // this.$nextTick(() => {
+            //     //     const textarea = document.getElementById('streamConsole')
+            //     //     if(textarea) {
+            //     //         textarea.scrollTop = textarea.scrollHeight
+            //     //     }
+            //     // })
+            // };
+            // if (cur_section === total_section) {
+            //     this.handleParseSSEComplete()
+            // }
+
+            // this.eventSourceParse.onerror = (e) => {
+            //     console.error('SSE error:', e)
+            //     this.handleParseSSEComplete()
+            // }
             // this.eventSourceParse.onerror = (e) => {
             //     console.error('Error:', e);
             //     this.eventSourceParse.close();
@@ -379,28 +386,86 @@ new Vue({
         },
         //解析eCTD
         async handleEctdParse(docId) {
-            try {
-                this.handleEctdParseSSE();
-              const response = await fetch(`http://127.0.0.1:5000//parse_ectd/${docId}`, {
-                method: 'POST',
-            });
-              const res = await response.json();
-              console.log("res为：",res)  
-              if (res.code === 200) {
-                this.$message.success('解析成功');
+                this.showParseProgress = true;
+                this.parseProgress = 0;
+                this.abortController = new AbortController();
+            
+                try {
+                const response = await fetch(
+                    `http://127.0.0.1:5000/parse_ectd_stream/${docId}`,
+                    {
+                    method: 'GET',
+                    signal: this.abortController.signal
+                    }
+                );
+            
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                }
+            
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+            
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+            
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    // 处理可能包含多个JSON对象的块
+                    const lines = buffer.split('\n');
+                    for (let i = 0; i < lines.length - 1; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+            
+                    try {
+                        const data = JSON.parse(line);
+                        console.log('流数据:', data);
+            
+                        // 更新进度
+                        if (data.cur_section && data.total_section) {
+                        this.parseProgress = Math.round(
+                            (data.cur_section / data.total_section) * 100
+                        );
+                        }
+            
+                        // 错误处理
+                        if (data.error) {
+                        throw new Error(data.error);
+                        }
+                    } catch (err) {
+                        console.error('数据解析错误:', err);
+                        this.$message.error(`解析失败: ${err.message}`);
+                        this.abortController.abort();
+                    }
+                    }
+                    buffer = lines[lines.length - 1]; // 保留不完整数据
+                }
+            
+                // 完成处理
+                this.$message.success('解析完成');
                 await this.getEctdList();
                 await this.handleFilter();
-              } else {
-                this.$message.error(res.error);
-              }
-            } finally {
-           
-            }
+                } catch (err) {
+                if (err.name !== 'AbortError') {
+                    this.$message.error(`请求失败: ${err.message}`);
+                }
+                } finally {
+                this.showParseProgress = false;
+                this.abortController = null;
+                }
           },
+          // 取消解析
+            cancelParse() {
+                if (this.abortController) {
+                this.abortController.abort();
+                }
+            },
           //解析非eCTD文件
           async handleFileParse(docId) {
             try {
-              const response = await fetch(`http://127.0.0.1:5000//parse_ectd/${docId}`, {
+              const response = await fetch(`http://127.0.0.1:5000/add_to_kd/${docId}`, {
                 method: 'POST',
             });
               const res = await response.json();

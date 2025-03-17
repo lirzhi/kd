@@ -45,7 +45,7 @@
                         <el-row type="flex" align="middle" :gutter="20">
                           <el-col :span="8">
                             <el-select v-model="selectedDoc" placeholder="请选择文档" class="doc-select" @change="handleDocChange" filterable>
-                                <el-option v-for="doc in ectdList" :key="doc.doc_id" :label="doc.file_name" :value="doc.doc_id"></el-option>
+                                <el-option v-for="doc in ectdList" v-if="doc.parse_status" :key="doc.doc_id" :label="doc.file_name" :value="doc.doc_id"></el-option>
                             </el-select>
                           </el-col>
                     
@@ -263,6 +263,7 @@
             <div v-if="showParseProgress">
                 <el-card class="dialog-card">
                     <span >解析进度: {{parseProgress}}%</span>
+                    <el-progress :percentage="parseProgress" :stroke-width="18" :status="progressStatus" striped/>
                 </el-card>
             </div>
         </el-dialog>
