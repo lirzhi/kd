@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-setuptools \
     python3-wheel \
     graphviz \
+    graphviz-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ===================== 环境配置层（中频变化） =====================
@@ -20,6 +21,7 @@ ENV BLIS_ARCH=generic
 # 优先复制依赖声明文件（触发缓存失效的关键层）
 COPY requirements.txt .
 RUN pip install --no-cache-dir "blis[openblas]"
+RUN pip install --no-cache-dir pygraphviz==1.14
 RUN pip install --upgrade pip setuptools && \
     pip install --no-cache-dir -r requirements.txt
 

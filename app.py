@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import time
-from flask import Flask, Response, jsonify, request, redirect, stream_with_context, url_for, render_template, flash
+from flask import Flask, Response, jsonify, request, redirect, send_from_directory, stream_with_context, url_for, render_template, flash
 from flask_cors import CORS, cross_origin
 from sqlalchemy import text
 
@@ -25,7 +25,7 @@ logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(leve
                     level=logging.INFO,
                     filename='log/server.log',
                     filemode='a')
-app = Flask(__name__)
+app = Flask(__name__, static_folder='templates')
 app.config['SECRET_KEY'] = 'your_secret_key'  # Used to protect the application from cross-site request forgery attacks
 # CORS(app, resources={r"/stream_logs": {"origins": "*"}})
 CORS(app)  # 允许所有跨域请求
@@ -153,9 +153,7 @@ def search_by_query():
 
 @app.route('/')
 def index():
-    resp = {}
-    resp["response"] = None
-    return render_template('review.html', result=resp)
+    return redirect(url_for("static", filename='review.html'))
 
 @app.route('/review_text', methods=['GET','POST'])
 @cross_origin()
