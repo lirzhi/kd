@@ -115,7 +115,7 @@ background: #f0f2f5;
 
 .search-container {
     position: fixed;
-    bottom: 40px;
+    bottom: 500px;
     left: 40px;
     z-index: 2000;
   }
@@ -134,7 +134,7 @@ background: #f0f2f5;
   }
   
   .search-ball.expanded {
-    width: 400px;
+    width: 800px;
     border-radius: 28px;
     background: #fff;
     box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);

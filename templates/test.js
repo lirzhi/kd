@@ -29,6 +29,9 @@ new Vue({
             // 其他原有数据保持不变
             fileList:[],
             parseLoading:false,
+            eventSourceParse:null,//解析
+            parseProgress:0,
+            showParseProgress:false,
             ectdList:[],//文件列表
             sectionList: [],    // 章节列表
             selectedDoc: '',     // 当前选中的文档ID
@@ -38,6 +41,8 @@ new Vue({
             sourceSearchQuery: '', // 来源搜索关键词
             sources: [], // 原始来源数据
             filteredSources: [], // 过滤后的来源数据
+            searchContents:"",//搜素
+            filteredSearchList:[],
             isGenerating: false,
             streamContent: "",
             results: {
@@ -67,7 +72,9 @@ new Vue({
         document.removeEventListener('click', this.clickOutsideHandler);
       },
     watch: {
-       
+        parseProgress(){
+
+        }      
     },
     methods: {
         // 初始化章节数据
@@ -301,19 +308,105 @@ new Vue({
             }
           },
           //无sse
-          async handleParse(docId) {
-            try {
+        //   async handleParse(docId) {
+        //     try {
               
-              console.log("docId为：",docId)
+        //       console.log("docId为：",docId)
+        //       const response = await fetch(`http://127.0.0.1:5000//parse_ectd/${docId}`, {
+        //         method: 'POST',
+        //     });
+        //       const res = await response.json();
+        //       console.log("res为：",res)
+              
+        //       if (res.code === 200) {
+        //         this.$message.success('解析成功');
+        //         await this.getEctdList();
+        //         await this.handleFilter();
+        //       } else {
+        //         this.$message.error(res.error);
+        //       }
+        //     } finally {
+           
+        //     }
+        //   },
+        async handleParse(docClassification,docId){
+            this.showParseProgress = true;
+            console.log("docId为：",docId);
+            if(docClassification == 'eCTD') this.handleEctdParse(docId);
+            else this.handleFileParse(docId);
+        },
+        //解析进度
+        async handleEctdParseSSE(docId){
+            if(this.eventSourceParse) {
+                this.eventSourceParse = null
+            }
+            this.eventSourceParse = new EventSource(`http://127.0.0.1:5000/parse_ectd_stream//${docId}`);
+            this.eventSourceParse.onmessage = (e) => {
+                
+                const msg = JSON.parse(e.data);
+                console.log('Received log:', msg);
+                const { cur_section, total_sections } = JSON.parse(e.data)
+                this.parseLoading = cur_section / total_sections *100;
+                // 自动滚动到底部
+                // this.$nextTick(() => {
+                //     const textarea = document.getElementById('streamConsole')
+                //     if(textarea) {
+                //         textarea.scrollTop = textarea.scrollHeight
+                //     }
+                // })
+            };
+            this.eventSourceParse.addEventListener('complete', () => {
+                this.handleParseSSEComplete()
+            })
+
+            this.eventSourceParse.onerror = (e) => {
+                console.error('SSE error:', e)
+                this.handleParseSSEComplete()
+            }
+            // this.eventSourceParse.onerror = (e) => {
+            //     console.error('Error:', e);
+            //     this.eventSourceParse.close();
+            // };
+
+        },
+        handleParseSSEComplete(){
+            this.showParseProgress = false;
+            if(this.eventSourceParse) {
+                this.eventSourceParse.close()
+            }
+            this.handleFilter();
+
+        },
+        //解析eCTD
+        async handleEctdParse(docId) {
+            try {
+                this.handleEctdParseSSE();
               const response = await fetch(`http://127.0.0.1:5000//parse_ectd/${docId}`, {
                 method: 'POST',
             });
               const res = await response.json();
-              console.log("res为：",res)
-              
+              console.log("res为：",res)  
               if (res.code === 200) {
                 this.$message.success('解析成功');
                 await this.getEctdList();
+                await this.handleFilter();
+              } else {
+                this.$message.error(res.error);
+              }
+            } finally {
+           
+            }
+          },
+          //解析非eCTD文件
+          async handleFileParse(docId) {
+            try {
+              const response = await fetch(`http://127.0.0.1:5000//parse_ectd/${docId}`, {
+                method: 'POST',
+            });
+              const res = await response.json();
+              console.log("res为：",res)  
+              if (res.code === 200) {
+                this.$message.success('解析成功');
                 await this.handleFilter();
               } else {
                 this.$message.error(res.error);
@@ -435,11 +528,15 @@ new Vue({
         // 显示结论来源
         showSource() {
             this.isSourceView = true;
-            // 模拟获取结论来源数据
-            this.sources = [
-                { requirement: '要求1', conclusion: '结论1' },
-                { requirement: '要求2', conclusion: '结论2' }
-            ];
+            this.filteredSources = this.results.review_require_list.map((item, index) => ({
+                review_require: item,
+                review_result: this.results.review_result_list[index].conclusion.content || ''
+              }))
+        },
+         // 删除来源
+         async deleteSource(index) {
+            this.filteredSources.splice(index, 1)
+        
         },
 
         // 返回主页面
@@ -521,12 +618,6 @@ new Vue({
         async searchSources() {
         
         },
-
-        // 删除来源
-        async deleteSource(index) {
-        
-        },
-
         // 初始化来源数据
         async loadSources() {
         
