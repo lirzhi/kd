@@ -39,5 +39,5 @@ COPY start.sh .
 COPY stop.sh .
 
 # ===================== 运行时配置层 =====================
-EXPOSE 8000
+EXPOSE 6060
 CMD ["/bin/bash", "start.sh"]
