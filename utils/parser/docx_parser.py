@@ -13,7 +13,7 @@ class DocxParser:
     def __init__(self):
         ensure_dir_exists(DOCX_IMAGE_PATH)
         ensure_dir_exists(DOCX_TABLE_PATH)
-        self.nlp = spacy.load("en_core_web_sm") # python -m spacy download en_core_web_sm
+        self.nlp = spacy.load("zh_core_web_sm") # python -m spacy download zh_core_web_sm
    
     def read_word_in_chunks(self, file_path, chunk_size):
         doc = Document(file_path)
