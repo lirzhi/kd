@@ -73,6 +73,7 @@
                         <!-- 左侧内容卡片 -->
                         <el-col v-else :span="12">
                             <el-card class="content-card">
+                                <el-button type="danger" @click="backToMain" style="margin-bottom:10px">返回</el-button>
                                 <!-- 来源列表 -->
                                 <div class="source-list">
                                     <el-card v-for="(source, index) in filteredSources" :key="index" class="source-item">
