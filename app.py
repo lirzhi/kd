@@ -64,23 +64,22 @@ def delete_file(doc_id):
         except Exception as e:
             logging.error(f'Failed to delete file: {str(e)}')
             return ResponseMessage(400, f'Failed to delete local file: {str(e)}', None).to_json()
-    if file_info.is_chunked != 1:
-        return ResponseMessage(200, f'File {doc_id} deleted successfully', None).to_json()
-    parsed_file_path=os.path.join(CHUNK_BASE_PATH, file_info.file_type, file_info.classification, "chunks", file_info.file_name)
-    if os.path.exists(parsed_file_path):
-        try:
-            os.remove(parsed_file_path)
-        except Exception as e:
-            logging.error(f'Failed to delete file: {str(e)}')
-            return ResponseMessage(400, f'Failed to delete local parsed file: {str(e)}', None).to_json()
-    # 删除向量数据
-    ids = file_info.chunk_ids.split(";")
-    ans = KDService().delete_chunk_from_vector(ids)
-    if ans == None:
-        logging.error('Failed to delete vector data')
-        return ResponseMessage(400, 'Failed to delete vector data', None).to_json()
-    logging.info(f'{ans}: document fragments successfully deleted from vector database')
-    
+    if file_info.is_chunked == 1:
+        parsed_file_path=os.path.join(CHUNK_BASE_PATH, file_info.file_type, file_info.classification, "chunks", file_info.file_name)
+        if os.path.exists(parsed_file_path):
+            try:
+                os.remove(parsed_file_path)
+            except Exception as e:
+                logging.error(f'Failed to delete file: {str(e)}')
+                return ResponseMessage(400, f'Failed to delete local parsed file: {str(e)}', None).to_json()
+        # 删除向量数据
+        ids = file_info.chunk_ids.split(";")
+        ans = KDService().delete_chunk_from_vector(ids)
+        if ans == None:
+            logging.error('Failed to delete vector data')
+            return ResponseMessage(400, 'Failed to delete vector data', None).to_json()
+        logging.info(f'{ans}: document fragments successfully deleted from vector database')
+        
     flag = FileService().delete_file_by_id(doc_id)
     if not flag:
         logging.warning(f'Failed to delete file {doc_id}')
@@ -332,18 +331,17 @@ def delete_ectd(doc_id):
             logging.error(f'Failed to delete file: {str(e)}')
             return ResponseMessage(400, f'Failed to delete local file: {str(e)}', None).to_json()
     
-    if file_info.is_chunked != 1:
-        return ResponseMessage(200, 'File deleted successfully', None).to_json()
-    if os.path.exists(f'{eCTD_FILE_DIR}{doc_id}.json'):
-        try:
-            os.remove(f"{eCTD_FILE_DIR}{doc_id}.json")
-        except Exception as e:
-            logging.error(f'Failed to delete file: {str(e)}')
-            return ResponseMessage(400, f'Failed to delete local parsed file: {str(e)}', None).to_json()
-    redis_conn = RedisDB()
-    keys = redis_conn.keys(doc_id + "*")
-    for key in keys:
-        redis_conn.delete(key)
+    if file_info.is_chunked == 1:
+        if os.path.exists(f'{eCTD_FILE_DIR}{doc_id}.json'):
+            try:
+                os.remove(f"{eCTD_FILE_DIR}{doc_id}.json")
+            except Exception as e:
+                logging.error(f'Failed to delete file: {str(e)}')
+                return ResponseMessage(400, f'Failed to delete local parsed file: {str(e)}', None).to_json()
+        redis_conn = RedisDB()
+        keys = redis_conn.keys(doc_id + "*")
+        for key in keys:
+            redis_conn.delete(key)
     flag = FileService().delete_file_by_id(doc_id)
     if not flag:
         logging.error(f'Failed to delete file {doc_id}')
