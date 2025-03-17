@@ -155,7 +155,7 @@ def search_by_query():
 def index():
     resp = {}
     resp["response"] = None
-    return render_template('search_form.html', result=resp)
+    return render_template('review.html', result=resp)
 
 @app.route('/review_text', methods=['GET','POST'])
 @cross_origin()
