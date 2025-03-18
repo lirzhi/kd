@@ -4,6 +4,15 @@ FROM python:3.10.15-slim
 
 # ===================== 系统依赖层（低频变化） =====================
 # 安装系统级编译工具（合并 RUN 减少层数）
+# 安装系统级编译工具（合并 RUN 减少层数）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3-dev \
+    python3-setuptools \
+    python3-wheel \
+    graphviz \
+    graphviz-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # ===================== 环境配置层（中频变化） =====================
 WORKDIR /app

@@ -41,7 +41,7 @@ services:
       - "9300:9300"
 
   drug_review_app:
-    image: drug_review_app:latest
+    image: drug-review-app:macos
     container_name: drug_review_app
     environment:
       - MYSQL_HOST=mysql
@@ -57,11 +57,12 @@ services:
       - ELASTICSEARCH_USERNAME=elastic
       - ELASTICSEARCH_PASSWORD=1433223aa
     volumes:
-      - review_app_data: /app/data/
-      - review_app_log: /app/log/
-      - review_llm_log: /app/llm/log/
+      - review_app_data:/app/data/
+      - review_app_log:/app/log/
+      - review_llm_log:/app/llm/log/
     ports:
       - "5000:5000"
+      - "8024:8024"
 
 volumes:
   redis_data:
@@ -69,3 +70,4 @@ volumes:
   elasticsearch_data:
   review_app_data:
   review_app_log:
+  review_llm_log: 

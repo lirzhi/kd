@@ -1,11 +1,11 @@
 ES = {
-    "hosts": "http://8.152.7.40:9200",
+    "hosts": "elasticsearch",
     "username": "elastic",
     "password": "1433223aa"
 }
 
 REDIS = {
-    "host": "8.152.7.40",
+    "host": "redis",
     "port": 6379,
     "db": 1,
     "username": "default", 
@@ -13,7 +13,7 @@ REDIS = {
 }
 
 MYSQL = {
-    "host": "8.152.7.40",
+    "host": "mysql",
     "port": 3306,
     "user": "root",
     "password": "1433223aa",
