@@ -1,5 +1,5 @@
 ES = {
-    "hosts": "elasticsearch",
+    "hosts": "http://elasticsearch:9200",
     "username": "elastic",
     "password": "1433223aa"
 }
