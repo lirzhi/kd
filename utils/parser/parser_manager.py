@@ -1,10 +1,6 @@
-
-import logging
 import os
 import time
-from db.dbutils import singleton
 from db.services.file_service import FileService
-from mutil_agents.agents.utils.llm_util import ask_llm_by_prompt_file
 from utils.file_util import ensure_dir_exists, rewrite_json_file
 
 CHUNK_BASE_PATH = "data/parser/"

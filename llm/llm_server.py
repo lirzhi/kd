@@ -7,7 +7,6 @@ from typing import List
 from fastapi import FastAPI
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
-from datetime import datetime
 from model_setting import LLM
 
 from starlette.responses import StreamingResponse

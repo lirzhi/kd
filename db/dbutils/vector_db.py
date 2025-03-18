@@ -1,4 +1,3 @@
-import json
 import os.path
 from typing import List, Dict
 from pymilvus import MilvusClient

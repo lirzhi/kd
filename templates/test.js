@@ -12,6 +12,33 @@ new Vue({
     
     data() {
         return {
+            markdownText : `## 检测方法合理性说明
+
+                ### 已知信息
+
+                根据提供的待审评内容，检测方法主要涉及水中和甲醇中溶解度的测定。检测步骤明确，包括试药与试剂的选择、仪器与设备的使用以及操作方法的详细描述。
+
+                ### 方法合理性分析
+
+                1. **试药与试剂选择**
+                - 使用甲醇作为溶剂进行溶解度测试是合理的，因为甲醇是一种常用的有机溶剂，广泛应用于药物溶解性研究。
+                - 水作为对照溶剂也符合常规检测标准，因为水是最常见的生物相关介质之一，其溶解性数据对于评估药物的生物利用度至关重要。
+
+                2. **仪器与设备选择**
+                - 所用仪器如秒表、电子分析天平（万分之一）、容量瓶、量筒等均为通用且高精度设备，能够满足溶解度测试的需求。
+                - 具塞刻度试管的设计有助于确保实验过程中样品与溶剂混合的均匀性和密封性，减少外界环境对实验结果的影响。
+
+                3. **操作方法合理性**
+                - 实验采用“强力振摇30秒”的方式模拟实际溶解过程，符合《中国药典》等相关规范中关于溶解度测定的操作要求。
+                - 测试条件（25℃±2℃）也符合药物溶解度研究的标准温度范围，能够反映药物在接近人体生理条件下的溶解性能。
+                - 通过间隔时间记录溶解情况（每5分钟观察一次），并持续观察30分钟，确保了实验数据的准确性和可靠性。
+
+                综上所述，该检测方法具有科学性和合理性，符合相关行业标准和实际需求。
+
+                ### 参考依据
+
+                - 检测方法参考了《中国药典》中关于溶解度测定的相关规定。
+                - 操作细节符合常规药物溶解度研究的技术要求。`,
             content:"",
             report:"",
             isExpanded: false, // 控制搜索框展开状态
@@ -93,7 +120,7 @@ new Vue({
         // 将 Markdown 文本转换为 HTML
         // Markdown 编译计算属性
         compiledMarkdown() {
-            return marked.parse(this.displayReport || '');
+            return marked.parse(this.formatMarkdown(this.displayReport) || '');
         }
     },    
     methods: {
@@ -232,11 +259,16 @@ new Vue({
                     body: formData, // 注意：不要手动设置 Content-Type
                 });
                 
-                if (res.status === 200) {
+                if (res.data.status === 1) {
                   this.$message.success('上传成功');
                   this.fileList = [];
+                  console.log("res.data为：",res.data)
                 //   this.getEctdList();
                   this.handleFilter();
+                }
+                else{
+                    this.$message.error(res.data.msg);
+
                 }
             } catch (error) {
                 this.$message.error('文件上传失败');
@@ -535,13 +567,56 @@ new Vue({
                     this.results = res.data;
                     console.log("this.results:",this.results)
                     this.report = this.results.final_report[0].report.content;
+                    const text = this.formatMarkdown(this.markdownText)
+
                     this.startTypewriterEffect();
                     console.log("this.report:",this.report)
+                    console.log("text:",text)
                 }
             } catch (error) {
                 console.error('生成结论失败:', error);
                 this.$message.error('结论生成失败，请重试');
             }
+        },
+        formatMarkdown(text) {
+              // 1. 去除多余的空格和换行符
+    text = text.replace(/\s+/g, ' ').trim();
+
+    // 2. 将多个空格替换为单个空格
+    text = text.replace(/ +/g, ' ');
+
+    // 3. 修复标题格式（确保各级标题前后有空行）
+    // 先处理三级标题
+    text = text.replace(/(### .+)/g, '\n\n$1\n\n');
+    // 再处理二级标题
+    text = text.replace(/(## .+)/g, '\n\n$1\n\n');
+    // 最后处理一级标题
+    text = text.replace(/(# .+)/g, '\n\n$1\n\n');
+
+    // 4. 修复列表项格式（确保列表项前有换行）
+    text = text.replace(/(\d+\.\s+)/g, '\n$1'); // 有序列表
+    text = text.replace(/(-\s+)/g, '\n$1');     // 无序列表
+
+    // 5. 修复列表项内部的换行（确保列表项内部的换行是两个空格）
+    text = text.replace(/(\n\s*-\s+[^\n]+)\s+/g, '$1  \n'); // 无序列表
+    text = text.replace(/(\n\s*\d+\.\s+[^\n]+)\s+/g, '$1  \n'); // 有序列表
+
+    // 6. 修复段落换行（确保段落之间有空行）
+    text = text.replace(/(\n{2,})/g, '\n\n');
+
+    // 7. 去除多余的空行
+    text = text.replace(/\n{3,}/g, '\n\n');
+
+    // 8. 修复标题下的内容换行（确保标题和内容之间有空行）
+    text = text.replace(/(\n##+ .+\n)([^#])/g, '$1\n$2');
+
+    // 9. 修复标题下的列表项换行（确保标题和列表项之间有空行）
+    text = text.replace(/(\n##+ .+\n)(\d+\.\s+|-\s+)/g, '$1\n$2');
+
+    // 10. 修复段落内的多余空格（确保段落内没有多余的空格）
+    text = text.replace(/(\n\s+)([^-\d])/g, '\n$2');
+
+    return text.trim();
         },
 
         // 生成章节结论

@@ -166,3 +166,4 @@ log/
 */log/
 llm/temp/key/
 .DS_Store
+*.tar

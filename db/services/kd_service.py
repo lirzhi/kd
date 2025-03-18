@@ -1,9 +1,7 @@
 import logging
 import os
 import jieba
-from sympy import factor_list
 from db.dbutils import singleton
-from db.dbutils.doc_store_conn import MatchTextExpr, OrderByExpr
 from db.dbutils.es_conn import ESConnection
 from db.dbutils.mysql_conn import MysqlConnection
 from db.dbutils.redis_conn import RedisDB
