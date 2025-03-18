@@ -35,7 +35,6 @@ COPY mutil_agents/ ./mutil_agents/
 COPY app.py .
 COPY start.sh .
 COPY stop.sh .
-
 # ===================== 运行时配置层 =====================
-EXPOSE 6060
+EXPOSE 5000
 CMD ["/bin/bash", "start.sh"]
