@@ -12,16 +12,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-#
-import base64
 from strenum import StrEnum
 import json
 import os
 import re
-from io import BytesIO
-
-import pdfplumber
-from PIL import Image
 from cachetools import LRUCache, cached
 from ruamel.yaml import YAML
 

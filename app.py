@@ -2,9 +2,8 @@ import copy
 import json
 import logging
 import time
-from flask import Flask, Response, jsonify, request, redirect, send_from_directory, stream_with_context, url_for, render_template, flash
+from flask import Flask, Response, request, redirect, stream_with_context, url_for, render_template, flash
 from flask_cors import CORS, cross_origin
-from sqlalchemy import text
 
 from db.dbutils.redis_conn import RedisDB
 from db.services.file_service import FileService
@@ -29,29 +28,38 @@ app = Flask(__name__, static_folder='templates')
 app.config['SECRET_KEY'] = 'your_secret_key'  # Used to protect the application from cross-site request forgery attacks
 # CORS(app, resources={r"/stream_logs": {"origins": "*"}})
 CORS(app)  # 允许所有跨域请求
-@app.route('/upload_file', methods=['GET', 'POST'])
+@app.route('/upload_file', methods=['POST'])
 def upload_file():
-    if request.method == 'POST':
-        # Check if the request contains a file
-        if 'file' not in request.files:
-            logging.error('No file part')
-            return ResponseMessage(400, 'No file part', None).to_json()
-        file = request.files['file']
-        # If the user does not select a file, the browser may submit an empty part without a filename
-        if file.filename == '':
-            flash('No selected file')
-            return ResponseMessage(400, 'No selected file', None).to_json()
-        meta_info = {
-            "classification": request.form.get('classification'),
-            "affect_range": request.form.get('affect_range'),
-        }
-        flag, info = FileService().save_file(file, meta_info)
-        if not flag:
-            logging.warning(info)
-            return ResponseMessage(400, info, None).to_json()
-        flash(f'File {file.filename} uploaded successfully! doc_id: {info}')
-        return ResponseMessage(200, f'File {file.filename} uploaded successfully! doc_id: {info}', {"file_name": file.filename, "doc_id": info}).to_json()
-    return render_template('upload.html')
+    res_data = {
+        "status": 1,
+        "doc_id": None,
+        "msg": None
+    }
+    # Check if the request contains a file
+    if 'file' not in request.files:
+        logging.error('No file part')
+        res_data["status"] = 0
+        res_data["msg"] = 'No file part'
+        return ResponseMessage(400, 'No file part', res_data).to_json()
+    file = request.files['file']
+    # If the user does not select a file, the browser may submit an empty part without a filename
+    if file.filename == '':
+        res_data["status"] = 0
+        res_data["msg"] = 'No selected file'
+        return ResponseMessage(400, 'No selected file', res_data).to_json()
+    meta_info = {
+        "classification": request.form.get('classification'),
+        "affect_range": request.form.get('affect_range'),
+    }
+    flag, info = FileService().save_file(file, meta_info)
+    if not flag:
+        logging.warning(info)
+        res_data["status"] = 0
+        res_data["msg"] = info
+        return ResponseMessage(400, info, res_data).to_json()
+    res_data["doc_id"] = info
+    res_data['msg'] = f'File {file.filename} uploaded successfully! doc_id: {info}'
+    return ResponseMessage(200, f'File {file.filename} uploaded successfully! doc_id: {info}', res_data).to_json()
 
 @app.route('/delete_file/<doc_id>', methods=['GET', 'POST'])
 def delete_file(doc_id):

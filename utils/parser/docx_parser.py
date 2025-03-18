@@ -1,8 +1,6 @@
 from docx import Document
 import os
 
-import spacy
-
 from db.dbutils import singleton
 from utils.file_util import ensure_dir_exists
 
@@ -13,7 +11,6 @@ class DocxParser:
     def __init__(self):
         ensure_dir_exists(DOCX_IMAGE_PATH)
         ensure_dir_exists(DOCX_TABLE_PATH)
-        self.nlp = spacy.load("zh_core_web_sm") # python -m spacy download zh_core_web_sm
    
     def read_word_in_chunks(self, file_path, chunk_size):
         doc = Document(file_path)
@@ -26,8 +23,6 @@ class DocxParser:
         }
         current_chunk_index = 0
 
-        # 用于存储当前chunk的最后一个句子的起始位置
-        last_sentence_start = None
         for i, paragraph in enumerate(doc.paragraphs):
             # 当前段落的文本
             paragraph_text = paragraph.text.strip()
@@ -37,10 +32,10 @@ class DocxParser:
                     current_chunk['start_pos'] = i
                     current_chunk["chunk_id"] = i + 1
                 # 使用spacy进行句子分割
-                doc_text = self.nlp(paragraph_text)
-                for sent in doc_text.sents:
+                doc_text = paragraph_text.split('。')
+                for sent in doc_text:
                     # 获取句子的文本
-                    sentence_text = sent.text.strip()
+                    sentence_text = sent.strip() + "。"
                     # 检查是否达到chunk大小限制
                     if len(current_chunk['text']) + len(sentence_text) > chunk_size:
                         # 保存当前chunk并开始新的chunk
@@ -56,8 +51,6 @@ class DocxParser:
                     else:
                         # 添加句子文本到当前chunk
                         current_chunk['text'] += sentence_text + '\n'
-                        if last_sentence_start is None:
-                            last_sentence_start = doc_text[sent.start].idx
 
         # 添加最后一个chunk（如果有）
         if current_chunk['text']:
@@ -92,7 +85,6 @@ class DocxParser:
                                         for idx, chunk in enumerate(chunks)
                                         if chunk['start_pos'] is not None)[1]
                 chunks[image_chunk_index]['image_paths'].append(image_path)
-
         return chunks
    
     def __call__(self, path):
