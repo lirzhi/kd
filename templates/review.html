@@ -106,9 +106,15 @@
 
                                 <!-- 最终报告显示 -->
                                 <!-- <div class="conclusion-display" :style="{marginTop: isGenerating ? '20px' : '0'}"> -->
-                                <div class="conclusion-display" >
-                                    <el-input type="textarea" :value="displayReport" :rows="29" readonly class="rounded-display" id="finalReport"></el-input>
-                                </div>
+                                    <div class="conclusion-display">
+                                        <div 
+                                          v-html="compiledMarkdown" 
+                                          class="rounded-display markdown-render"
+                                        ></div>
+                                      </div>
+                                      <!-- <div class="conclusion-display" >
+                                        <el-input type="textarea" :value="displayReport" :rows="29" readonly class="rounded-display" id="finalReport"></el-input>
+                                    </div> -->
 
                                 <div  class="stream-display" :style="{marginTop:  '20px' }">
                                     <el-input type="textarea" :value="streamContent" :rows="2" readonly class="dynamic-console" id="streamConsole"></el-input>
@@ -274,6 +280,8 @@
     <script src="./vue.js"></script>
     <!-- 引入Element-UI -->
     <script src="./element-ui.js"></script>
+    <script src="./marked.js"></script>
     <script src="./test.js"></script>
+    
 </body>
 </html>

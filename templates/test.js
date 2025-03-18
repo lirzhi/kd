@@ -1,6 +1,15 @@
+// 配置 marked 全局选项
+marked.setOptions({
+    breaks: true,       // 将换行符转换为 <br>（关键配置）
+    sanitize: false,    // 允许原始 HTML（若需要保留特殊格式）
+    mangle: false,      // 禁用自动生成锚点链接
+    headerIds: false,   // 禁用自动生成 header ID
+    gfm: true           // 启用 GitHub Flavored Markdown 模式
+  });
 // 创建Vue实例
 new Vue({
     el: '#app',
+    
     data() {
         return {
             content:"",
@@ -80,8 +89,13 @@ new Vue({
     computed:{
         progressStatus() {
             return this.parseProgress === 100 ? 'success' : 'primary'
-          }
-    },
+          },
+        // 将 Markdown 文本转换为 HTML
+        // Markdown 编译计算属性
+        compiledMarkdown() {
+            return marked.parse(this.displayReport || '');
+        }
+    },    
     methods: {
         // 初始化章节数据
         async handleDocChange(docId) {

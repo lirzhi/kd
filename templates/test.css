@@ -297,5 +297,57 @@ border-radius: 12px;
     .rounded-display textarea {
         transition: all 0.3s ease;
     }
-}
+    .markdown-render {
+      /* 固定高度 & 滚动设置 */
+      height: 500px; /* 可根据需要调整具体高度值 */
+      overflow-y: auto; /* 垂直滚动 */
+      
+      /* 字体设置 */
+      font-family: "SimSun", serif; /* 宋体 */
+      font-size: 16px; 
+      
+      /* 原有样式保留 */
+      padding: 12px;
+      border: 1px solid #DCDFE6;
+      border-radius: 4px;
+      background: white;
+    }
+    
+    /* 确保所有子元素继承字体设置 */
+    .markdown-render * {
+      font-family: inherit;
+      font-size: inherit;
+      line-height: 1.6; /* 增加行高提升可读性 */
+    }
+    
+    /* 代码块保持等宽字体 */
+    .markdown-render pre,
+    .markdown-render code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 14px; /* 代码字号稍小 */
+    }
+
+    /* 基础 Markdown 样式 */
+    .markdown-render h1 { font-size: 2em; margin: 0.67em 0; }
+    .markdown-render h2 { font-size: 1.5em; margin: 0.83em 0; }
+    .markdown-render h3 { 
+      margin: 1.2em 0 0.8em; /* 调整三级标题间距 */
+      border-left: 4px solid #409EFF; /* 添加Element-UI风格装饰线 */
+      padding-left: 12px;
+    }
+    .markdown-render p { margin: 1em 0; }
+    .markdown-render ul { padding-left: 2em; list-style: disc; }
+    .markdown-render ul ul {
+      margin-left: 2em;       /* 二级列表缩进 */
+      list-style-type: circle;/* 层级标识区分 */
+    }
+    .markdown-render code { padding: 0.2em 0.4em; background: #f3f4f4; border-radius: 3px; }
+    .markdown-render pre { background: #f8f8f8; padding: 1em; overflow: auto; }
+    }
+    .markdown-render blockquote {
+      border-left: 3px solid #67c23a; /* Element-UI success 色 */
+      background: #f0f9eb;
+      margin: 1em 0;
+      padding: 8px 16px;
+    }
 }
