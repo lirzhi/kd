@@ -1,9 +1,5 @@
 ES = {
-<<<<<<< HEAD
-    "hosts": "elasticsearch",
-=======
     "hosts": "http://elasticsearch:9200",
->>>>>>> main
     "username": "elastic",
     "password": "1433223aa"
 }
