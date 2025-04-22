@@ -1,4 +1,5 @@
 const SERVER_HOST = '127.0.0.1'
+const SERVER_PORT = '5001'
 // 配置 marked 全局选项
 marked.setOptions({
     breaks: true,       // 将换行符转换为 <br>（关键配置）
@@ -181,7 +182,7 @@ new Vue({
           async getSectionId(docId) {
             // 调用后端接口获取章节列表
             try {
-                const response = await fetch(`http://${SERVER_HOST}:5000/get_ectd_sections/${docId}`, {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/get_ectd_sections/${docId}`, {
                     method: 'POST',
                 });
                 
@@ -215,7 +216,7 @@ new Vue({
                 const docKey = `${this.selectedDoc}${this.selectedSection}`;
                 console.log("docKey为:",docKey)
                 try {
-                    const response = await fetch(`http://${SERVER_HOST}:5000/get_ectd_content/${docKey}`, {
+                    const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/get_ectd_content/${docKey}`, {
                         method: 'POST',
                     });
                     
@@ -238,7 +239,7 @@ new Vue({
             if(this.eventSource) {
                 this.eventSource = null
             }
-            this.eventSource = new EventSource(`http://${SERVER_HOST}:5000/stream_logs`);
+            this.eventSource = new EventSource(`http://${SERVER_HOST}:${SERVER_PORT}/stream_logs`);
             this.eventSource.onmessage = (e) => {
                 
                 const msg = JSON.parse(e.data);
@@ -299,7 +300,7 @@ new Vue({
             formData.append('affect_range', affect_range);
             console.log("formData为",formData)
             try {
-                const response = await fetch(`http://${SERVER_HOST}:5000/upload_file`,  {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/upload_file`,  {
                     
                     method: 'POST',
                     body: formData, // 注意：不要手动设置 Content-Type
@@ -347,7 +348,7 @@ new Vue({
         async getClassification() {
             // 调用后端接口获取章节列表
             try {
-                const response = await fetch(`http://${SERVER_HOST}:5000/get_file_classification`, {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/get_file_classification`, {
                     method: 'POST',
                 });
                 
@@ -367,7 +368,7 @@ new Vue({
             const classification = this.selectedCategory;
             console.log("classification:",classification)
             try {
-                const response = await fetch(`http://${SERVER_HOST}:5000/get_file_by_class/${classification}`, {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/get_file_by_class/${classification}`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                 });
@@ -391,7 +392,7 @@ new Vue({
         //获取Ectd列表
         async getEctdList() {
             try {
-                const response = await fetch(`http://${SERVER_HOST}:5000/get_ectd_info_list`, {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/get_ectd_info_list`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                 });
@@ -411,7 +412,7 @@ new Vue({
         //     try {
               
         //       console.log("docId为：",docId)
-        //       const response = await fetch(`http://${SERVER_HOST}:5000//parse_ectd/${docId}`, {
+        //       const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}//parse_ectd/${docId}`, {
         //         method: 'POST',
         //     });
         //       const res = await response.json();
@@ -449,7 +450,7 @@ new Vue({
             
                 try {
                 const response = await fetch(
-                    `http://${SERVER_HOST}:5000/parse_ectd_stream/${docId}`,
+                    `http://${SERVER_HOST}:${SERVER_PORT}/parse_ectd_stream/${docId}`,
                     {
                     method: 'GET',
                     signal: this.abortController.signal
@@ -522,7 +523,7 @@ new Vue({
           //解析非eCTD文件
           async handleFileParse(docId) {
             try {
-              const response = await fetch(`http://${SERVER_HOST}:5000/add_to_kd/${docId}`, {
+              const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/add_to_kd/${docId}`, {
                 method: 'POST',
             });
               const res = await response.json();
@@ -546,7 +547,7 @@ new Vue({
               });
               console.log("docId为：",docId)
               
-              const response = await fetch(`http://${SERVER_HOST}:5000/delete_ectd/${docId}`, {
+              const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/delete_ectd/${docId}`, {
                 method: 'POST',
             });
               const res = await response.json();
@@ -576,7 +577,7 @@ new Vue({
             }
             console.log("params:",params)
             try {
-                const response = await fetch(`http://${SERVER_HOST}:5000/review_text`, {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/review_text`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -756,7 +757,7 @@ new Vue({
             //     requirement:this.newExperience
             // }
             // try {
-            //     const response = await fetch(`http://${SERVER_HOST}:5000/add_requirement`, {
+            //     const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/add_requirement`, {
             //       method: 'POST',
             //       body:params
             //   });
@@ -809,7 +810,7 @@ new Vue({
                 formData.append('query',this.searchKeyword)
                 
                 try { 
-                    const response = await fetch(`http://${SERVER_HOST}:5000/search_by_query`, {
+                    const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/search_by_query`, {
                         method: 'POST',
                         body: formData
                     });
@@ -880,7 +881,7 @@ new Vue({
             formData.append('affect_range', affect_range);
             console.log("formData为",formData)
             try {
-                const response = await fetch(`http://${SERVER_HOST}:5000/upload_file`,  {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/upload_file`,  {
                     
                     method: 'POST',
                     body: formData, // 注意：不要手动设置 Content-Type
