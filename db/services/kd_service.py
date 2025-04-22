@@ -145,6 +145,10 @@ class KDService:
         llm_resp = {}
         reference_map = {}
         for item in result:
+            if item["entity"]["doc_id"] is None:
+                continue
+            if item["entity"]["doc_id"] == "":
+                continue
             file_info = FileService().get_file_by_id(item["entity"]["doc_id"])
             if file_info is None:
                 continue

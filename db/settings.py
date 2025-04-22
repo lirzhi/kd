@@ -56,15 +56,16 @@
 # SVR_QUEUE_MAX_LEN = 1024
 # SVR_CONSUMER_NAME = "handle_info_consumer"
 # SVR_CONSUMER_GROUP_NAME = "handle_info_consumer_group"
+HOST = "127.0.0.1"
 
 ES = {
-    "hosts": "http://10.255.255.254:9200",
+    "hosts": f"http://{HOST}:9200",
     "username": "elastic",
     "password": "1433223aa"
 }
 
 REDIS = {
-    "host": "10.255.255.254",
+    "host": HOST,
     "port": 6379,
     "db": 1,
     "username": "default", 
@@ -72,7 +73,7 @@ REDIS = {
 }
 
 MYSQL = {
-    "host": "10.255.255.254",
+    "host": HOST,
     "port": 3306,
     "user": "root",
     "password": "1433223aa",

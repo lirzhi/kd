@@ -179,16 +179,6 @@ def get_requirement():
         logger.error(f"接口异常: {str(e)}", exc_info=True)
         return ResponseMessage(500, '服务器内部错误', None).to_json()
 
-#添加审评要求
-@app.route('/add_requirement', methods=['POST'])
-@cross_origin()
-def add_requirement():
-    section_id = request.json.get('section_id')
-    parent_section = request.json.get('parent_section')
-    requirement = request.json.get('requirement')
-    
-    return ResponseMessage(200, 'Search completed', None).to_json()
-
 
 @app.route('/search_by_query', methods=['GET','POST'])
 @cross_origin()
@@ -275,7 +265,7 @@ def parse_ectd(doc_id):
     section_ids = []
     redis_conn = RedisDB()
     for item in cleaned_data.get("content", []):
-        redis_conn.set(doc_id + item.get("section_id"), json.dumps(item), None) 
+        redis_conn.set(f'section_content+{doc_id}+{item.get("section_id")}', json.dumps(item), None) 
         section_ids.append(item.get("section_id")) 
     rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
     
@@ -357,7 +347,8 @@ def parse_ectd_stream(doc_id):
             redis_conn = RedisDB()
             for item_content in cleaned_data.get("content", []):
                 print(item_content)
-                redis_conn.set(doc_id + item_content.get("section_id"), json.dumps(item_content), None)
+                f'section_content+{doc_id}+{item.get("section_id")}'
+                redis_conn.set(f'section_content+{doc_id}+{item_content.get("section_id")}', json.dumps(item_content), None)
 
             rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
             FileService().update_file_chunk_by_id(doc_id, len(section_ids), ";".join(section_ids))
@@ -390,7 +381,7 @@ def delete_ectd(doc_id):
                 logging.error(f'Failed to delete file: {str(e)}')
                 return ResponseMessage(400, f'Failed to delete local parsed file: {str(e)}', None).to_json()
         redis_conn = RedisDB()
-        keys = redis_conn.keys(doc_id + "*")
+        keys = redis_conn.keys("section_content+" + doc_id + "*")
         for key in keys:
             redis_conn.delete(key)
     flag = FileService().delete_file_by_id(doc_id)
@@ -427,9 +418,78 @@ def get_ectd_sections(doc_id):
     section_ids = section_str.split(";")
     return ResponseMessage(200, 'Get eCTD sections successfully', section_ids).to_json()
 
-@app.route('/get_ectd_content/<ectd_key>', methods=['GET','POST'])
+@app.route('/get_report_content', methods=['GET','POST'])
+@cross_origin()
+def get_report_content():
+    doc_id = request.json.get('doc_id')
+    section_id = request.json.get('section_id')
+    if not doc_id or not section_id:
+        logging.error('No doc_id or section_id provided')
+        return ResponseMessage(400, 'No doc_id or section_id provided', None).to_json()
+    redis_conn = RedisDB()
+    data = redis_conn.get(f"review_content+{doc_id}+{section_id}")
+    if data == None:
+        logging.error(f'No content found for doc_id: {doc_id}, section_id: {section_id}')
+        return ResponseMessage(400, f'No content found for doc_id: {doc_id}, section_id: {section_id}', None).to_json()
+    return ResponseMessage(200, 'Get report content successfully', data).to_json()
+
+@app.route('/set_report_content', methods=['GET','POST'])
+@cross_origin()
+def set_report_content():
+    doc_id = request.json.get('doc_id')
+    section_id = request.json.get('section_id')
+    content = request.json.get('content')
+    if not doc_id or not section_id or not content:
+        logging.error('No doc_id, section_id or content provided')
+        return ResponseMessage(400, 'No doc_id, section_id or content provided', None).to_json()
+    redis_conn = RedisDB()
+    flag = redis_conn.set(f"review_content+{doc_id}+{section_id}", json.dumps(content), -1)
+    if not flag:
+        logging.error(f'Failed to set content for doc_id: {doc_id}, section_id: {section_id}')
+        return ResponseMessage(400, f'Failed to set content for doc_id: {doc_id}, section_id: {section_id}', None).to_json()
+    return ResponseMessage(200, 'Set report content successfully', None).to_json()
+
+@app.route('/get_principle_content', methods=['GET','POST'])
+@cross_origin()
+def get_principle_content():
+    section_id = request.json.get('section_id')
+    if not section_id:
+        logging.error('No doc_id or section_id provided')
+        return ResponseMessage(400, 'No doc_id or section_id provided', None).to_json()
+    redis_conn = RedisDB()
+    data = redis_conn.get(f"principle_content+{section_id}")
+    if data == None:
+        logging.error(f'No principle content found for section_id: {section_id}')
+        return ResponseMessage(400, f'No principle content found for section_id: {section_id}', None).to_json()
+    return ResponseMessage(200, 'Get principle content successfully', data).to_json()
+
+@app.route('/set_principle_content', methods=['GET','POST'])
+@cross_origin()
+def set_principle_content():
+    section_id = request.json.get('section_id')
+    content = request.json.get('content')
+    if not section_id or not content:
+        logging.error('No doc_id, section_id or content provided')
+        return ResponseMessage(400, 'No doc_id, section_id or content provided', None).to_json()
+    if not isinstance(content, list):
+        logging.error('Content is not a list')
+        return ResponseMessage(400, 'Content is not a list', None).to_json()
+    redis_conn = RedisDB()
+    flag = redis_conn.set(f"principle_content+{section_id}", json.dumps(content), -1)
+    if not flag:
+        logging.error(f'Failed to set principle content for doc_id: section_id: {section_id}')
+        return ResponseMessage(400, f'Failed to set principle content for doc_id: section_id: {section_id}', None).to_json()
+    return ResponseMessage(200, 'Set principle content successfully', None).to_json()
+
+@app.route('/get_ectd_content', methods=['GET','POST'])
 @cross_origin()
 def get_ectd_content(ectd_key):
+    doc_id = request.json.get('doc_id')
+    section_id = request.json.get('section_id')
+    if not doc_id or not section_id:
+        logging.error('No doc_id or section_id provided')
+        return ResponseMessage(400, 'No doc_id or section_id provided', None).to_json()
+    ectd_key = f"section_content+{doc_id}+{section_id}"
     redis_conn = RedisDB()
     data = redis_conn.get(ectd_key)
     return ResponseMessage(200, 'Get content successfully', data).to_json()
@@ -520,4 +580,4 @@ def stream_logs():
     )
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)
