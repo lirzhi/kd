@@ -57,6 +57,7 @@ class Tools:
             if resp is not None and len(resp["response"]) > 0:
                 value += resp["response"]
         print(f"value:{value}")
+        # value = [value[0:2]]
         return value  
 
     @staticmethod   

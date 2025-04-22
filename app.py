@@ -8,14 +8,16 @@ from flask_cors import CORS, cross_origin
 from db.dbutils.redis_conn import RedisDB
 from db.services.file_service import FileService
 from db.services.kd_service import KDService
+from db.services.requirement_service import RequireService
 from mutil_agents.agents.utils.llm_util import ask_llm_by_prompt_file
-from mutil_agents.memory.review_state import ReviewState
+from mutil_agents.memory.specific_review_state import SpecificReviewState
 from utils.common_util import ResponseMessage, get_handle_info
 from utils.file_util import ensure_dir_exists, rewrite_json_file
 from utils.parser.ctd_parser import CTDPDFParser
 from utils.parser.parser_manager import CHUNK_BASE_PATH, ParserManager
-from mutil_agents.agent import graph
+from mutil_agents.agent import specific_report_generationAgent_graph
 import os
+logger = logging.getLogger(__name__)
 
 eCTD_FILE_DIR = 'data/parser/eCTD/'
 ensure_dir_exists('log')
@@ -150,6 +152,44 @@ def add_to_kd(doc_id):
     logging.info(f"{res['insert_count']}/{len(chunks)} document fragments successfully added to vector database")
     return ResponseMessage(200, f'File {doc_id} successfully added to knowledge base', chunks).to_json()
 
+#审评要求部分
+#获取审评要求
+@app.route('/get_requirement', methods=['POST'])
+@cross_origin()
+def get_requirement():
+   try:
+        # 参数校验
+        section_id = request.json.get('section_id')
+    
+        # if not section_id:
+        #     return ResponseMessage(400, 'section_id 参数缺失', None).to_json()
+
+        # 调用服务层
+        service = RequireService()
+       
+        result = service.get_requirement_by_section(section_id)
+        # if not result.success:
+        #     return ResponseMessage(500, result.error, None).to_json()
+        # 返回格式化数据
+        return ResponseMessage(200, 'Success', result.data).to_json()
+   except ValueError:
+        logger.warning("参数类型错误: section_id 必须为整数")
+        return ResponseMessage(400, 'section_id 必须为整数', None).to_json()
+   except Exception as e:
+        logger.error(f"接口异常: {str(e)}", exc_info=True)
+        return ResponseMessage(500, '服务器内部错误', None).to_json()
+
+#添加审评要求
+@app.route('/add_requirement', methods=['POST'])
+@cross_origin()
+def add_requirement():
+    section_id = request.json.get('section_id')
+    parent_section = request.json.get('parent_section')
+    requirement = request.json.get('requirement')
+    
+    return ResponseMessage(200, 'Search completed', None).to_json()
+
+
 @app.route('/search_by_query', methods=['GET','POST'])
 @cross_origin()
 def search_by_query():
@@ -166,18 +206,22 @@ def index():
 @app.route('/review_text', methods=['GET','POST'])
 @cross_origin()
 def review_text():
+    start_time = time.time()
     content = request.json.get('content')
     content_section = request.json.get('content_section')
     review_require_list = request.json.get('review_require_list')
     if not content:
         logging.error('No review content provided')
         return ResponseMessage(400, 'No review content provided', None).to_json()
-    review_state = ReviewState()
+    review_state = SpecificReviewState()
     review_state["content"] = content
     review_state["content_section"] = content_section
     review_state["review_require_list"] = review_require_list
-    result = graph.invoke(review_state)
+    result = specific_report_generationAgent_graph.invoke(review_state)
     print(ResponseMessage(200, 'Review completed', result).to_json())
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"执行时间: {execution_time} 秒")
     return ResponseMessage(200, 'Review completed', result).to_json()
 
 @app.route('/parse_ectd/<doc_id>', methods=['GET','POST'])
@@ -270,6 +314,7 @@ def parse_ectd_stream(doc_id):
                     "section_name": item.get("section_name", ""),
                     "content": []
                 }
+                section_ids.append(item.get("section_id"))
 
                 llm_data = {"content": item.get("content")}
                 try:
@@ -305,7 +350,6 @@ def parse_ectd_stream(doc_id):
 
                 content["content"] = ans["response"]["content"]
                 cleaned_data["content"].append(copy.deepcopy(content))
-                section_ids.append(item.get("section_id"))
 
                 yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
 

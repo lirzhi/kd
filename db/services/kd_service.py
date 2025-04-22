@@ -36,15 +36,16 @@ class KDService:
     def delete_chunk_from_vector(self, ids):
         return self.vector_db.deleteByIds(ids)
     
-    def search_by_query(self, query, kb_ids=[]):
-        # 构建查询条件
-        condition = {
-            "text": query  # 假设您想要查询文本字段中包含"example"的文档
-        }
-        return self.es_conn.search(
-            condition=condition,
-            indexNames="knowledge_index",
-        )
+    # def search_by_query(self, query, kb_ids=[]):
+    #     print(f"query为：{query}")
+    #     # 构建查询条件
+    #     condition = {
+    #         "text": query  # 假设您想要查询文本字段中包含"example"的文档
+    #     }
+    #     return self.es_conn.search(
+    #         condition=condition,
+    #         indexNames="knowledge_index",
+    #     )
 
         # match_expr = MatchTextExpr(
         #     fields=["text"],
@@ -161,6 +162,8 @@ class KDService:
             else:
                 reference_map[item["entity"]["doc_id"]] = reference_file_info
         gen = ask_llm_by_prompt_file("mutil_agents/prompts/review/generate_prompt.j2", llm_context)
+        if type(gen["response"]) != list :
+            gen["response"] = [gen["response"]]
         llm_resp["response"] = gen["response"]
         llm_resp["reference"] = reference_map
         llm_resp["query"] = query

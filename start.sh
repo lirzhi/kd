@@ -1,3 +1,4 @@
+#!/bin/bash
 cd llm/
 python llm_server.py &
 cd ..

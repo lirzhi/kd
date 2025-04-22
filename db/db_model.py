@@ -1,3 +1,4 @@
+
 from sqlalchemy import Boolean, Column, Integer, String, Text
 from db.dbutils.mysql_conn import Base, MysqlConnection
 class FileInfo(Base):
@@ -15,7 +16,15 @@ class FileInfo(Base):
     chunk_size = Column(Integer, nullable=True)
     is_deleted = Column(Boolean, default=False)
     create_time = Column(String(256), nullable=False)
-
+class RequireInfo(Base):
+    __tablename__ = "require_info"
+    id = Column(Integer, primary_key=True, index=True, comment="主键自增id")
+    section_id = Column(String(256), nullable=False, index=True, comment="章节id")
+    parent_section = Column(String(256), nullable=False, index=True, comment="父章节id")
+    requirement = Column(String(1024), nullable=False)
+    is_origin = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
+    create_time = Column(String(256), nullable=False)
 if __name__ == "__main__":
     db_conn = MysqlConnection()
     db_conn.recreate_all()

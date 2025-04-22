@@ -10,268 +10,266 @@
 </head>
 <body>
     <div id="app">
-        <!-- 整体容器 -->
         <el-container class="main-wrapper">
-            <!-- 头部区域 -->
-            <el-header class="system-header">
-                <span class="system-title">审评系统</span>
-            </el-header>
-
-            <el-container class="content-wrapper">
-                <!-- 侧边导航栏 -->
-                <el-aside width="200px" class="nav-sidebar">
-                    <el-menu
-                        default-active="1"
-                        class="menu-container"
-                        @select="handleMenuSelect">
-                        <el-menu-item index="1">
-                            <i class="el-icon-document"></i>
-                            <span>报告生成</span>
-                        </el-menu-item>
-                        <el-menu-item index="2">
-                            <i class="el-icon-files"></i>
-                            <span>审评要求</span>
-                        </el-menu-item>
-                        <el-menu-item index="3">
-                            <i class="el-icon-files"></i>
-                            <span>文件管理</span>
-                        </el-menu-item>
-                    </el-menu>
-                </el-aside>
-
-                <!-- 主内容区域 -->
-                <el-main class="main-content">
-                    <div class="doc-selector">
-                        <el-row type="flex" align="middle" :gutter="20">
-                          <el-col :span="8">
-                            <el-select v-model="selectedDoc" placeholder="请选择文档" class="doc-select" @change="handleDocChange" filterable>
-                                <el-option v-for="doc in ectdList" v-if="doc.parse_status" :key="doc.doc_id" :label="doc.file_name" :value="doc.doc_id"></el-option>
-                            </el-select>
-                          </el-col>
-                    
-                          <el-col :span="8">
-                            <el-select v-model="selectedSection" placeholder="请选择章节" class="doc-select" :disabled="!selectedDoc" filterable>
-                                <el-option v-for="sectionId in sectionList" :key="sectionId" :label="sectionId" :value="sectionId"></el-option>
-                            </el-select>
-                          </el-col>
-                          <el-col :span="4">
-                            <el-button type="primary" :disabled="!selectedSection" @click="getContent">查看</el-button>
-                          </el-col>
-                        </el-row>
+          <el-header class="system-header">
+            <span class="system-title">审评系统</span>
+          </el-header>
+      
+          <el-container class="content-wrapper">
+            <el-aside width="200px" class="nav-sidebar">
+              <el-menu default-active="1" class="menu-container" @select="handleMenuSelect">
+                <el-menu-item index="1"><i class="el-icon-document"></i><span>报告生成</span></el-menu-item>
+                <el-menu-item index="2"><i class="el-icon-files"></i><span>审评要求</span></el-menu-item>
+                <el-menu-item index="3"><i class="el-icon-files"></i><span>文件管理</span></el-menu-item>
+              </el-menu>
+            </el-aside>
+      
+            <el-main class="main-content">
+              <div class="doc-selector">
+                <el-row type="flex" align="middle" :gutter="20">
+                  <el-col :span="8">
+                    <el-select v-model="selectedDoc" placeholder="请选择文档" class="doc-select" @change="handleDocChange" filterable>
+                      <el-option v-for="doc in ectdList" v-if="doc.parse_status" :key="doc.doc_id" :label="doc.file_name" :value="doc.doc_id"/>
+                    </el-select>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-select v-model="selectedSection" placeholder="请选择章节" class="doc-select" :disabled="!selectedDoc" filterable>
+                      <el-option v-for="sectionId in sectionList" :key="sectionId" :label="sectionId" :value="sectionId"/>
+                    </el-select>
+                  </el-col>
+                  <el-col :span="4"><el-button type="primary" :disabled="!selectedSection" @click="getContent">查看</el-button></el-col>
+                </el-row>
+              </div>
+      
+              <el-row class="card-container" :gutter="20">
+                <el-col v-if="!isSourceView && !isStepView" :span="12">
+                  <el-card class="content-card" style="margin-top: 0;">
+                    <div class="text-editor-container">
+                      <!-- <el-input type="textarea" v-model="content" :rows="35" placeholder="输入章节内容" class="rounded-editor"/> -->
+                      <div v-html="markedContent" style="height: 80vh; overflow-y: auto;"></div>
+                    </div>
+                  </el-card>
+                </el-col>
+      
+                <el-col v-else-if="!isStepView" :span="12">
+                  <el-card class="content-card" style="height: 80vh; overflow-y: auto;margin-top: 0px;">
+                    <el-button type="danger" @click="backToMain" style="margin-bottom:10px">返回</el-button>
+                    <div class="source-list">
+                      <el-card v-for="(source, index) in filteredSources" :key="index" class="source-item">
+                        <div class="source-header">
+                          <span class="source-title">指导原则 {{ index + 1 }}</span>
+                          <el-button type="danger" icon="el-icon-delete" circle @click="deleteSource(index)"/>
+                        </div>
+                        <div class="source-content">
+                          <el-input type="textarea" :value="source.review_require" :rows="3" readonly class="requirement-box"/>
+                          <!-- <el-input type="textarea" :value="source.review_result" :rows="4" readonly class="conclusion-box"/> -->
+                        </div>
+                      </el-card>
+                    </div>
+                  </el-card>
+                </el-col>
+                <el-col v-else :span="12">
+                  <!-- 外部卡片固定高度 80vh，并允许内部滚动 -->
+                  <el-card  style="height: 80vh; overflow-y: auto;">
+                    <el-button type="danger" @click="backToMain" style="margin-bottom: 10px;">返回</el-button>
+                    <!-- 内部卡片（去掉了固定高度，由外部卡片控制滚动） -->
+                    <el-card style="margin-top: 0px;">
+                      <div v-if="filteredSteps && filteredSteps.length > 0">
+                        <div v-for="(step, index) in filteredSteps" :key="index" style="padding: 5px 0; border-bottom: 1px solid #eee;">
+                          {{ step }}
+                        </div>
                       </div>
-                    <!-- 双栏内容区域 -->
-                    <el-row  class="card-container" :gutter="20">
-                        <!-- 左侧内容卡片 --> 
-                        <el-col v-if="!isSourceView" :span="12">
-                            <el-card class="content-card">
-                                <div class="text-editor-container">
-                                    <el-input type="textarea" v-model="content" :rows="35" placeholder="输入章节内容" class="rounded-editor"></el-input>
-                                </div>
-                            </el-card>
-                        </el-col>
-
-                        <!-- 左侧内容卡片 -->
-                        <el-col v-else :span="12">
-                            <el-card class="content-card">
-                                <el-button type="danger" @click="backToMain" style="margin-bottom:10px">返回</el-button>
-                                <!-- 来源列表 -->
-                                <div class="source-list">
-                                    <el-card v-for="(source, index) in filteredSources" :key="index" class="source-item">
-                                    <div class="source-header">
-                                        <span class="source-title">来源 {{ index + 1 }}</span>
-                                        <el-button type="danger" icon="el-icon-delete" circle @click="deleteSource(index)"></el-button>
-                                    </div>
-                                
-                                    <div class="source-content">
-                                        <el-input type="textarea" :value="source.review_require" :rows="3" readonly class="requirement-box"></el-input>
-                                        <el-input type="textarea" :value="source.review_result" :rows="4" readonly class="conclusion-box"></el-input>
-                                    </div>
-                                    </el-card>
-                                </div>
-                            </el-card>
-                        </el-col>
-
-                        <!-- 右侧结论卡片 -->
-                        <el-col :span="12">
-                            <el-card class="conclusion-card">
-                                <div slot="header" class="report-header">
-                                    <span>审评报告</span>
-                                    <div> 
-                                        <el-button type="primary" @click="generateReport"  style="margin-left: 10px;">生成报告</el-button>
-                                        <el-button type="info" @click="showSource">结论来源</el-button>
-                                        <!-- <el-button type="warning" @click="showExpDialog">经验管理</el-button> -->
-                                        <el-button type="danger" @click="regenerate">重新生成</el-button>
-                                    </div>
-                                </div>
-
-                                <!-- 最终报告显示 -->
-                                <!-- <div class="conclusion-display" :style="{marginTop: isGenerating ? '20px' : '0'}"> -->
-                                    <div class="conclusion-display">
-                                        <div 
-                                          v-html="compiledMarkdown" 
-                                          class="rounded-display markdown-render"
-                                        ></div>
-                                      </div>
-                                      <!-- <div class="conclusion-display" >
-                                        <el-input type="textarea" :value="displayReport" :rows="29" readonly class="rounded-display" id="finalReport"></el-input>
-                                    </div> -->
-
-                                <div  class="stream-display" :style="{marginTop:  '20px' }">
-                                    <el-input type="textarea" :value="streamContent" :rows="2" readonly class="dynamic-console" id="streamConsole"></el-input>
-                                </div>
-                            </el-card>
-                        </el-col>
-
-                        <div class="search-container" @click.stop>
-                            <!-- 悬浮球 -->
-                            <div class="search-ball" :class="{ 'expanded': isExpanded }" @click="handleBallClick">
-                              <!-- 收缩状态显示搜索图标 -->
-                              <i v-if="!isExpanded" class="el-icon-search search-icon"></i>
-                              <!-- 展开后的搜索区域 -->
-                              <transition name="el-zoom-in-center">
-                                <div v-if="isExpanded" class="search-box">
-                                    <el-input ref="searchInput" v-model="searchKeyword" placeholder="请输入搜索内容" class="custom-input" @keyup.enter.native="performSearch">
-                                        <el-button slot="append" type="primary" class="search-btn" icon="el-icon-search" @click="performSearch" />
-                                    </el-input>
-                                    <el-card class="content-card">
-                                        <!-- 来源列表 -->
-                                        <div class="source-list">
-                                            <el-card v-for="(search, index) in filteredSearchList" :key="index" class="source-item">
-                                            <div class="source-header">
-                                                <span class="source-title">搜索结果 {{ index + 1 }}</span>
-                                            </div>
-                                            <div class="source-content">
-                                                <el-input type="textarea" :value="search.review_require" :rows="3" readonly class="requirement-box"></el-input>
-                                                <el-input type="textarea" :value="search.review_result" :rows="4" readonly class="conclusion-box"></el-input>
-                                            </div>
-                                            </el-card>
-                                        </div>
-                                    </el-card>
-                                </div>
-                              </transition>
-                            </div>
+                      <div v-else style="color: #999; text-align: center; padding: 10px;">
+                        暂无数据
+                      </div>
+                    </el-card>
+                  </el-card>
+                </el-col>
+      
+                <el-col :span="12">
+                  <el-card class="conclusion-card" >
+                    <div slot="header" class="report-header">
+                      <span>审评报告</span>
+                      <div> 
+                        <el-button type="primary" @click="generateReport" style="margin-left: 10px;">生成报告</el-button>
+                        <el-button type="info" @click="showStep">生成过程</el-button>
+                        <el-button type="info" @click="showSource">结论来源</el-button>
+                        <el-button type="danger" @click="regenerate">重新生成</el-button>
+                      </div>
+                    </div>
+                    <div class="conclusion-display">
+                      <el-card class="report-card">
+                        <div v-html="compiledMarkdown" style="height: 60vh; overflow-y: auto;" class="rounded-display markdown-render"></div>
+                      </el-card>
+                    </div>
+                    <div class="stream-display" :style="{marginTop: '20px'}">
+                      <el-input type="textarea" :value="streamContent" :rows="2" readonly class="dynamic-console" id="streamConsole"/>
+                    </div>
+                  </el-card>
+                </el-col>
+      
+                <div class="search-container" @click.stop>
+                  <div class="search-ball" :class="{ 'expanded': isExpanded }" @click="handleBallClick">
+                    <i v-if="!isExpanded" class="el-icon-search search-icon"></i>
+                    <transition name="el-zoom-in-center">
+                      <div v-if="isExpanded" class="search-box">
+                        <el-card class="search-wrapper">  <!-- 新增卡片容器 -->
+                        <el-loading :active="isSearchLoading" :text="searchLoadingText" spinner="el-icon-loading" background="rgba(255, 255, 255, 0.9)">
+                          <div class="input-container">  <!-- 新增输入容器 -->
+                          <el-input ref="searchInput" v-model="searchKeyword" placeholder="请输入搜索内容" class="custom-input" 
+                            @keyup.enter.native="performSearch" :loading="isSearchLoading">
+                            <el-button slot="append" type="primary" icon="el-icon-search search-icon" @click="performSearch"/>
+                          </el-input>
                           </div>
-                    </el-row>
-                </el-main>
-            </el-container>
+                          <div class="results-container">
+                          <el-card class="merged-results"><h3>搜索结果：</h3><div class="merged-content">{{ mergedContent }}</div></el-card>
+                          <el-card class="reference-table">
+                            <el-table :data="referenceList" style="width:100%" max-height="400">
+                              <el-table-column prop="doc_id" label="文档ID" width="auto"> </el-table-column>
+                              <el-table-column prop="file_name" label="文件名" width="auto"> </el-table-column>
+                              <el-table-column prop="page_id" label="页码/索引" width="auto"> </el-table-column>
+                              <el-table-column prop="classification" label="分类" width="auto"> </el-table-column>
+                              <el-table-column label="操作" width="120">
+                                <template slot-scope="scope">
+                                  <el-button type="text" @click="showReferenceContent(scope.row)">查看内容</el-button>
+                                </template>
+                              </el-table-column>
+                            </el-table>
+                            <div v-if="selectedDocContent" class="reference-content">
+                              <h4>文档内容：</h4>
+                              <el-input type="textarea" :value="selectedDocContent" :rows="8"  resize="none" class="content-box"/>
+                            </div>
+                          </el-card>
+                        </div>
+                        </el-loading>
+                        </el-card>
+                      </div>
+                    </transition>
+                  </div>
+                </div>
+              </el-row>
+            </el-main>
+          </el-container>
         </el-container>
 
-        <!-- 经验管理对话框 -->
-        <el-dialog
-            title="审评要求"
-            :visible.sync="expDialogVisible"
-            width="66%"
-            top="5vh"
-            :center="true"
-            custom-class="exp-dialog">
+       <!-- 经验管理对话框 -->
+        <el-dialog title="审评要求" :visible.sync="expDialogVisible" width="66%" top="5vh" center custom-class="exp-dialog">
             <div class="exp-dialog-content">
-                <!-- 输入区域 -->
-                <div class="input-section">
-                    <el-input v-model="newExperience" type="textarea" :rows="3" resize="vertical" placeholder="输入审评要求" class="exp-textarea"></el-input>
-                    <div class="btn-container">
-                        <el-button type="primary" class="confirm-btn" @click="addExperience">添加要求</el-button>
-                    </div>
-                </div>
-
-                <!-- 经验列表 -->
-                <div class="exp-list">
-                    <el-card
-                        v-for="(exp, index) in experiences"
-                        :key="index"
-                        class="exp-item">
-                        <div class="card-content">
-                            <el-input v-model="exp.content" type="textarea" resize="vertical" :autosize="{ minRows: 2 }" class="exp-content"></el-input>
-                            <div class="action-container">
-                                <el-button type="danger" icon="el-icon-delete" circle @click="deleteExperience(index)"></el-button>
-                            </div>
-                        </div>
-                    </el-card>
-                </div>
-            </div>
-        </el-dialog>
-        <el-dialog
-            title="文件管理"
-            :visible.sync="uploadDialogVisible"
-            width="60%"
-            :height="dialogHeight"
-            custom-class="ectd-dialog"
-            >
-            <!-- 自定义标题样式 -->
-            <template slot="title">
-                <div class="dialog-title">文件管理</div>
-            </template>
-
-            <!-- 文件上传卡片 -->
-            <el-card class="dialog-card">
-                <div slot="header" class="card-header">
-                <span>文件上传</span>
-                </div>
-                <el-form ref="form" :model="uploadForm" label-width="80px">
-                <el-form-item label="类别">
-                    <el-input v-model="uploadForm.classification"></el-input>
-                </el-form-item>
-                <el-form-item label="影响范围">
-                    <el-input v-model="uploadForm.affect_range"></el-input>
-                </el-form-item>
-                </el-form>
-                
-                <el-upload
-                class="upload-demo"
-                ref="upload"
-                action=""
-                :auto-upload="false"
-                :file-list="fileList"
-                :before-upload="beforeUpload"
-                :on-change="handleChange"
-                >
-                <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
-                <el-button style="margin-left: 10px;" size="small" type="success" @click="submitUpload">上传到服务器</el-button>
-                <!-- <div slot="tip" class="el-upload__tip">只能上传eCTD文件（不超过500MB）</div> -->
-                </el-upload>
-            </el-card>
-
-            <!-- 文件列表卡片 -->
-            <el-card class="dialog-card">
+            <el-card class="dialog-card" style="overflow-y: auto;">
                 <div slot="header" class="card-header filter-header">
                     <div class="filter-container">
-                        <el-select v-model="selectedCategory" placeholder="选择类别" clearable style="width: 200px; margin-right: 15px;" @focus="getClassification">
-                        <el-option v-for="item in categoryOptions" :key="item" :label="item" :value="item"/>
-                        </el-select>
-                        <el-button type="primary" @click="handleFilter":disabled="!selectedCategory">查看</el-button>
+                        <!-- 紧凑型级联选择器 (父级+子级同一行) -->
+                        <div style="display: inline-flex; gap: 8px">
+                          <!-- 父级选择 -->
+                          <el-select v-model="selectedExpSection1" value-key="section_id" @change="selectedExpSection2=null" placeholder="一级" clearable style="width:160px" size="small">
+                            <el-option v-for="p in ectdSectionList" :key="p.section_id" :label="`${p.section_id} ${p.section_name}`" :value="p"/>
+                          </el-select>
+
+                          <!-- 子级选择 -->
+                          <el-select v-model="selectedExpSection2" value-key="section_id" :disabled="!selectedExpSection1?.children_sections?.length" clearable 
+                            :placeholder="selectedExpSection1?.children_sections?.length ? '二级' : '无子项'" style="width:160px" size="small">
+                            <el-option v-for="c in selectedExpSection1?.children_sections||[]" :key="c.section_id" :label="`${c.section_id} ${c.section_name}`" :value="c"/>
+                          </el-select>
+                        </div>
+                        <el-button type="primary" @click="handleExpFilter" >查看</el-button>
                     </div>
                 </div>
-
-                <el-table :data="filteredList" style="width: 100%" border>
-                <el-table-column prop="doc_classification" label="文档类别" width="180"> </el-table-column>
-                <el-table-column prop="doc_id" label="文档ID" width="180"></el-table-column>
-                <el-table-column prop="file_name"label="文件名称"></el-table-column>
-                <el-table-column
-                    label="解析状态"
-                    width="120">
+                <div class="input-section">
+                    <el-input v-model="newExperience" type="textarea" :rows="3" resize="vertical" placeholder="输入审评要求" class="exp-textarea"></el-input> 
+                </div>
+                <div class="button-group">
+                    <div class="button-row">             
+                        <el-button type="primary"  class="action-btn" @click="addExperience">添加要求</el-button>
+                        <el-upload class="upload-demo"  ref="upload" action="" :auto-upload="false" 
+                            :file-list="requireFileList" :before-upload="requireBeforeUpload" :on-change="requireHandleChange">
+                            <el-button slot="trigger" class="action-btn" size="small" type="primary">导入要求文件</el-button>
+                            <el-button size="small" class="action-btn" type="success" @click="requireSubmitUpload" style="margin-left:10px">上传到服务器</el-button>
+                        </el-upload>
+                    </div>
+                </div>
+                
+        
+                <el-table :data="requireFilteredList" style="width:100%" border>
+                <el-table-column prop="section_id" label="章节ID" width="180"> </el-table-column>
+                <el-table-column prop="section_name" label="章节名称" width="180"> </el-table-column>
+                <el-table-column prop="requirement" label="审评要求"> </el-table-column>
+                <el-table-column label="操作" width="200" fixed="right">
                     <template v-slot="scope">
-                    <el-tag :type="scope.row.parse_status === true ? 'success' : 'warning'">
-                        {{ scope.row.parse_status === true ? '已解析' : '未解析' }}
-                    </el-tag>
+                    <el-button size="mini" type="danger" @click="deleteExperience(scope.row.section_id)">删除</el-button>
                     </template>
                 </el-table-column>
-                <el-table-column label="操作" width="200"fixed="right">
-                    <template v-slot="scope">
-                    <el-button
-                        size="mini"
-                        type="primary"
-                        :disabled="scope.row.parse_status === true"
-                        @click="handleParse(scope.row.doc_classification,scope.row.doc_id)"
-                    >解析</el-button>
+                </el-table>
+        
+                <div class="exp-list" style="overflow-y: auto;">
+                <el-card v-for="(exp, index) in experiences" :key="index" class="exp-item">
+                    <div class="card-content">
+                    <el-input v-model="exp" type="textarea" resize="vertical" :autosize="{minRows:2}" class="exp-content"/>
+                    <div class="action-container">
+                        <el-button type="danger" icon="el-icon-delete" circle @click="deleteExperience(index)"/>
+                    </div>
+                    </div>
+                </el-card>
+                </div>
+            </el-card>
+            </div>
+        </el-dialog>
+        
+        <!-- 文件管理对话框 -->
+        <el-dialog title="文件管理" :visible.sync="uploadDialogVisible" width="60%" :height="dialogHeight" custom-class="ectd-dialog">
+            <template slot="title">
+            <div class="dialog-title">文件管理</div>
+            </template>
+        
+            <el-card class="dialog-card">
+            <div slot="header" class="card-header"><span>文件上传</span></div>
+            <el-form ref="form" :model="uploadForm" label-width="80px">
+                <el-form-item label="类别"><el-input v-model="uploadForm.classification"/></el-form-item>
+                <el-form-item label="影响范围"><el-input v-model="uploadForm.affect_range"/></el-form-item>
+            </el-form>
+            
+            <el-upload class="upload-demo" ref="upload" action="" :auto-upload="false" 
+                :file-list="fileList" :before-upload="beforeUpload" :on-change="handleChange">
+                <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
+                <el-button size="small" type="success" @click="submitUpload" style="margin-left:10px">上传到服务器</el-button>
+            </el-upload>
+            </el-card>
+        
+            <el-card class="dialog-card">
+            <div slot="header" class="card-header filter-header">
+                <div class="filter-container">
+                <el-select v-model="selectedCategory" placeholder="选择类别" clearable style="width:200px;margin-right:15px" @focus="getClassification">
+                    <el-option v-for="item in categoryOptions" :key="item" :label="item" :value="item"/>
+                </el-select>
+                <el-button type="primary" @click="handleFilter" :disabled="!selectedCategory">查看</el-button>
+                </div>
+            </div>
+        
+            <el-table :data="filteredList" style="width:100%" border>
+                <el-table-column prop="doc_classification" label="文档类别" width="180"> </el-table-column>
+                <el-table-column prop="doc_id" label="文档ID" width="180"> </el-table-column>
+                <el-table-column prop="file_name" label="文件名称"> </el-table-column>
+                <el-table-column label="解析状态" width="120">
+                <template v-slot="scope">
+                    <el-tag :type="scope.row.parse_status ? 'success' : 'warning'">
+                    {{ scope.row.parse_status ? '已解析' : '未解析' }}
+                    </el-tag>
+                </template>
+                </el-table-column>
+                <el-table-column label="操作" width="200" fixed="right">
+                <template v-slot="scope">
+                    <el-button size="mini" type="primary" :disabled="scope.row.parse_status" 
+                    @click="handleParse(scope.row.doc_classification,scope.row.doc_id)">解析</el-button>
                     <el-button size="mini" type="danger" @click="handleDelete(scope.row.doc_id)">删除</el-button>
-                    </template>
+                </template>
                 </el-table-column>
             </el-table>
             </el-card>
+        
             <div v-if="showParseProgress">
-                <el-card class="dialog-card">
-                    <span >解析进度: {{parseProgress}}%</span>
-                    <el-progress :percentage="parseProgress" :stroke-width="18" :status="progressStatus" striped/>
-                </el-card>
+            <el-card class="dialog-card">
+                <span>解析进度: {{parseProgress}}%</span>
+                <el-progress :percentage="parseProgress" :stroke-width="18" :status="progressStatus" striped/>
+            </el-card>
             </div>
         </el-dialog>
        
@@ -281,6 +279,8 @@
     <!-- 引入Element-UI -->
     <script src="./element-ui.js"></script>
     <script src="./marked.js"></script>
+    <script src="./ectd-section.js"></script>
+    <script src="./report.js"></script>
     <script src="./test.js"></script>
     
 </body>

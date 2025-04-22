@@ -1,4 +1,4 @@
-version: '3.3'
+# version: '3.3'
 
 services:
   redis:
@@ -40,34 +40,35 @@ services:
       - "9200:9200"
       - "9300:9300"
 
-  drug_review_app:
-    image: drug-review-app:linux
-    container_name: drug_review_app
-    depends_on:
-      - mysql
-      - redis
-      - elasticsearch
-    environment:
-      - MYSQL_HOST=mysql
-      - MYSQL_PORT=3306
-      - MYSQL_USER=huachuan
-      - MYSQL_PASSWORD=1433223aa
-      - MYSQL_DATABASE=rag
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=1433223aa
-      - ELASTICSEARCH_HOST=elasticsearch
-      - ELASTICSEARCH_PORT=9200
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=1433223aa
-      - FLASK_RUN_HOST=0.0.0.0  # 如果是Flask应用
-    volumes:
-      - review_app_data:/app/data/
-      - review_app_log:/app/log/
-      - review_llm_log:/app/llm/log/
-    ports:
-      - "5000:5000"
-      - "8024:8024"
+  # drug_review_app:
+  #   image: drug-review-app:linux_v9
+  #   container_name: drug_review_app
+  #   depends_on:
+  #     - mysql
+  #     - redis
+  #     - elasticsearch
+  #   environment:
+  #     - MYSQL_HOST=mysql
+  #     - MYSQL_PORT=3306
+      
+  #     - MYSQL_USER=huachuan
+  #     - MYSQL_PASSWORD=1433223aa
+  #     - MYSQL_DATABASE=rag
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - REDIS_PASSWORD=1433223aa
+  #     - ELASTICSEARCH_HOST=elasticsearch
+  #     - ELASTICSEARCH_PORT=9200
+  #     - ELASTICSEARCH_USERNAME=elastic
+  #     - ELASTICSEARCH_PASSWORD=1433223aa
+  #     - FLASK_RUN_HOST=0.0.0.0  # 如果是Flask应用
+  #   volumes:
+  #     - review_app_data:/app/data/
+  #     - review_app_log:/app/log/
+  #     - review_llm_log:/app/llm/log/
+  #   ports:
+  #     - "5000:5000"
+  #     - "8024:8024"
 
 volumes:
   redis_data:

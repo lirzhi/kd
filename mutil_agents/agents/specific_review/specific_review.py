@@ -20,7 +20,7 @@ class SpecificReview:
 
     @parallelize_processing(field_to_iterate='review_require_list', result_field='search_plan_list')
     def analyze(self, review_state: SpecificReviewState, review_require, index):
-        print("start analyze")
+        # print("start analyze")
         if review_state.get("search_plan_list") != None and len(review_state["search_plan_list"]) > index:
             return review_state["search_plan_list"][index]
         data = {
@@ -41,7 +41,7 @@ class SpecificReview:
     
     @parallelize_processing(field_to_iterate='search_plan_list', result_field='search_list')
     def search(self, review_state: SpecificReviewState, search_plan, index):
-        print("start search")
+        # print("start search")
         if review_state.get("search_list") != None and len(review_state["search_list"]) > index:
             return review_state["search_list"][index]
         if search_plan == None or len(search_plan) == 0:
@@ -80,7 +80,7 @@ class SpecificReview:
     
     @parallelize_processing(field_to_iterate='review_require_list', result_field='review_result_list')
     def generate_report_by_require(self, review_state: SpecificReviewState, review_require, index):
-        print("start generate_report_by_require")
+        # print("start generate_report_by_require")
         if review_state.get("review_result_list") != None and len(review_state["review_result_list"]) > index:
             return review_state["review_result_list"][index]
         produce_handle_info({"task": "当前处理要求", "data": review_require})
@@ -98,7 +98,7 @@ class SpecificReview:
         return ans["response"]
     
     def generate_final_report(self, review_state: SpecificReviewState):
-        print("start generate_final_report")
+        # print("start generate_final_report")
         produce_handle_info({"task": "最终报告生成", "data": "开始生成最终报告..."})
         data = {
             "content": review_state["content"],
@@ -116,7 +116,7 @@ class SpecificReview:
         return review_state
     
     def check_report(self, review_state: SpecificReviewState):
-        print("start judge")
+        # print("start judge")
         if len(review_state.get("final_report", [])) > 2:
             return "continue"
         produce_handle_info({"task": "评估", "data": "评估最终报告..."})

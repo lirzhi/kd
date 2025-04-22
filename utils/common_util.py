@@ -2,14 +2,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import wraps
 import json
 import logging
+import time
 
 from db import settings
 
-def parallelize_processing(field_to_iterate, result_field, max_workers=3):
+def parallelize_processing(field_to_iterate, result_field, max_workers=8):
     def decorator(func):
         @wraps(func)
         def wrapper(self, data_state):
             logging.info(f"{func.__name__}...")
+            start_time = time.time()
             # 创建线程池
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 # 提交任务到线程池
@@ -26,10 +28,13 @@ def parallelize_processing(field_to_iterate, result_field, max_workers=3):
                         result_list[index] = result
                 # 将结果合并到review_state中
                 data_state[result_field] = result_list
+            end_time = time.time()
+            execution_time = end_time - start_time
+            print(f"{func.__name__} 执行时间: {execution_time} 秒")
             return data_state
         return wrapper
     return decorator
-
+    
 class ResponseMessage:
     def __init__(self, code, message, data=None):
         self.code = code

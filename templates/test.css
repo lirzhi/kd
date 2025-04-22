@@ -115,7 +115,7 @@ background: #f0f2f5;
 
 .search-container {
     position: fixed;
-    bottom: 500px;
+    bottom: 450px;
     left: 40px;
     z-index: 2000;
   }
@@ -134,10 +134,46 @@ background: #f0f2f5;
   }
   
   .search-ball.expanded {
-    width: 800px;
+    width: 1200px;
     border-radius: 28px;
     background: #fff;
     box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  }
+  .search-wrapper {  /* 新增卡片样式 */
+    width: 100%;
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  .input-container {  /* 输入区域样式 */
+    background: #fff;
+    padding: 16px 16px 0 16px;
+    border-radius: 0 0 0 0;
+    position: relative;
+  }
+  
+  .custom-input .el-input__inner {
+    border-radius: 24px 0 0 24px;
+    border-right: none;
+  }
+  
+  .custom-input .el-input-group__append {
+    background: #409eff;
+    border-radius: 0 24px 24px 0;
+    border-left: none;
+    padding: 0 20px;
+  }
+  
+  .search-button {  /* 搜索按钮样式 */
+    color: white;
+    background: transparent !important;
+    border: none !important;
+    font-size: 24px;
+  }
+  
+  .results-container {  /* 结果区域间距 */
+    padding: 20px;
+    margin-top: 10px;
   }
   
   .search-icon {
@@ -147,12 +183,25 @@ background: #f0f2f5;
   }
   
   .search-box {
-    width: 100%;
     padding: 0 16px;
+    width: 100%;
   }
-  
+  /* 自定义加载样式 */
+.el-loading-spinner {
+  background: rgba(255,255,255,0.9);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+}
+
+.el-loading-text {
+  color: #409EFF;
+  margin-top: 10px;
+  font-size: 14px;
+}
   .custom-input {
     width: 100%;
+    border-radius: 30px ;
   }
   
   .search-btn {
@@ -168,7 +217,49 @@ background: #f0f2f5;
   .search-btn:active {
     transform: scale(0.95);
   }
-
+  .content-card {
+    margin-top: 20px;
+  }
+  
+  .search-results {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  
+  .search-item {
+    margin-bottom: 20px;
+  }
+  
+  .result-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  
+  .result-title {
+    font-weight: bold;
+    margin-right: 10px;
+  }
+  
+  .result-reference,
+  .result-file {
+    margin-right: 10px;
+    color: #666;
+  }
+  
+  .result-content,
+  .reference-details {
+    margin-top: 10px;
+  }
+  
+  .reference-card {
+    margin-top: 10px;
+  }
+  
+  .content-box,
+  .reference-box {
+    width: 100%;
+  }
 .rounded-display {
     transition: margin-top 0.3s;
 }
@@ -188,6 +279,7 @@ background: #f0f2f5;
   .dialog-card {
     margin-bottom: 20px;
     width: 100%;
+    overflow-y: auto;
   }
   
   .card-header {
@@ -217,14 +309,35 @@ background: #f0f2f5;
     padding: 15px 20px;
   }
 .exp-dialog {
-height: 66vh;
+height: 80vh;
 border-radius: 12px;
+overflow-y: auto;
 
 ::v-deep .el-dialog__body {
     height: calc(100% - 55px);
     padding: 20px;
 }
+/* 按钮容器 */
+.button-group {
+  margin: 20px 0;
+}
 
+.button-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+/* 统一按钮样式 */
+.action-btn {
+  height: 40px;
+  min-width: 120px;
+  padding: 10px 20px;
+  border-radius: 6px;
+  transition: all 0.3s;
+}
 .exp-dialog-content {
     height: 100%;
     display: flex;
@@ -292,12 +405,22 @@ border-radius: 12px;
         0%, 100% { opacity: 1; }
         50% { opacity: 0; }
     }
-
+    .report-card {
+      height: 800px !important; /* 固定视口高度的80% */
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .report-card .el-card__body {
+      height: 100%;
+      overflow-y: auto; /* 内容超出时显示滚动条 */
+      padding: 20px;
+    }
     /* 添加过渡效果 */
     .rounded-display textarea {
         transition: all 0.3s ease;
     }
-    .markdown-render {
+    .rounded-display .markdown-render {
       /* 固定高度 & 滚动设置 */
       height: 500px; /* 可根据需要调整具体高度值 */
       overflow-y: auto; /* 垂直滚动 */
@@ -328,7 +451,7 @@ border-radius: 12px;
     }
 
     /* 基础 Markdown 样式 */
-    .markdown-render h1 { font-size: 2em; margin: 0.67em 0; }
+    .markdown-render h1 { font-size: 48px !important;  margin: 0.67em 0; }
     .markdown-render h2 { font-size: 1.5em; margin: 0.83em 0; }
     .markdown-render h3 { 
       margin: 1.2em 0 0.8em; /* 调整三级标题间距 */

@@ -20,11 +20,12 @@ class SpecificReportGenerationAgent:
         workflow.add_edge("get_require_list", "content_analyze")
         workflow.add_edge("content_analyze", "search_direct_reference")
         workflow.add_edge("search_direct_reference", "generate_report_by_require")
-        workflow.add_edge("generate_report_by_require", "generate_final_report")
-        workflow.add_conditional_edges("generate_final_report", agents["review_agent"].check_report, {"continue": END, 
-                                                                                                      "analyze": "content_analyze",
-                                                                                                      "review":"generate_report_by_require",
-                                                                                                      "generate": "generate_final_report"})
+        # workflow.add_edge("generate_report_by_require", "generate_final_report")
+        # workflow.add_conditional_edges("generate_final_report", agents["review_agent"].check_report, {"continue": END, 
+        #                                                                                               "analyze": "content_analyze",
+        #                                                                                               "review":"generate_report_by_require","generate": "generate_final_report"})
+        #
+        workflow.add_edge("generate_report_by_require", END)                                                                                              
     def create_workflow(self, agents):
         workflow = StateGraph(SpecificReviewState)
         workflow.add_node("get_require_list", agents["review_agent"].get_require_list)

@@ -14,14 +14,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     graphviz-dev \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt update
+
 # ===================== 环境配置层（中频变化） =====================
-WORKDIR /app
+WORKDIR /knowledge_database
 
 # ===================== 依赖安装层（中频变化） =====================
 # 优先复制依赖声明文件（触发缓存失效的关键层）
 COPY requirements.txt .
 RUN pip install --upgrade pip setuptools && \
-    pip install --no-cache-dir -r requirements.txt
+pip install --no-deps --ignore-requires-python -r requirements.txt
 
 # ===================== 静态文件层（低频变化） =====================
 COPY conf/ ./conf/
@@ -37,4 +39,7 @@ COPY start.sh .
 COPY stop.sh .
 # ===================== 运行时配置层 =====================
 EXPOSE 5000
+
+RUN apt install dos2unix
+RUN dos2unix start.sh
 CMD ["/bin/bash", "start.sh"]

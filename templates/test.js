@@ -1,11 +1,14 @@
+const SERVER_HOST = '127.0.0.1'
 // 配置 marked 全局选项
 marked.setOptions({
     breaks: true,       // 将换行符转换为 <br>（关键配置）
     sanitize: false,    // 允许原始 HTML（若需要保留特殊格式）
     mangle: false,      // 禁用自动生成锚点链接
     headerIds: false,   // 禁用自动生成 header ID
-    gfm: true           // 启用 GitHub Flavored Markdown 模式
+    gfm: true,          // 启用 GitHub Flavored Markdown 模式
+    smartLists: true // 自动优化列表缩进
   });
+
 // 创建Vue实例
 new Vue({
     el: '#app',
@@ -14,35 +17,38 @@ new Vue({
         return {
             markdownText : `## 检测方法合理性说明
 
-                ### 已知信息
+ ### 已知信息
 
-                根据提供的待审评内容，检测方法主要涉及水中和甲醇中溶解度的测定。检测步骤明确，包括试药与试剂的选择、仪器与设备的使用以及操作方法的详细描述。
+ 根据提供的待审评内容，检测方法主要涉及水中和甲醇中溶解度的测定。检测步骤明确，包括试药与试剂的选择、仪器与设备的使用以及操作方法的详细描述。
 
-                ### 方法合理性分析
+ ### 方法合理性分析
+- **试药与试剂选择** 
+ - 使用甲醇作为溶剂进行溶解度测试是合理的，因为甲醇是一种常用的有机溶剂，广泛应用于药物溶解性研究。 
+ - 水作为对照溶剂也符合常规检测标准，因为水是最常见的生物相关介质之一，其溶解性数据对于评估药物的生物利用度至关重要。
+- **仪器与设备选择** 
+ - 所用仪器如秒表、电子分析天平（万分之一）、容量瓶、量筒等均为通用且高精度设备，能够满足溶解度测试的需求。 
+ - 具塞刻度试管的设计有助于确保实验过程中样品与溶剂混合的均匀性和密封性，减少外界环境对实验结果的影响。
+- **操作方法合理性** 
+ - 实验采用“强力振摇30秒”的方式模拟实际溶解过程，符合《中国药典》等相关规范中关于溶解度测定的操作要求。 
+ - 测试条件（25℃±2℃）也符合药物溶解度研究的标准温度范围，能够反映药物在接近人体生理条件下的溶解性能。 
+ - 通过间隔时间记录溶解情况（每5分钟观察一次），并持续观察30分钟，确保了实验数据的准确性和可靠性。
 
-                1. **试药与试剂选择**
-                - 使用甲醇作为溶剂进行溶解度测试是合理的，因为甲醇是一种常用的有机溶剂，广泛应用于药物溶解性研究。
-                - 水作为对照溶剂也符合常规检测标准，因为水是最常见的生物相关介质之一，其溶解性数据对于评估药物的生物利用度至关重要。
+ 综上所述，该检测方法具有科学性和合理性，符合相关行业标准和实际需求。
 
-                2. **仪器与设备选择**
-                - 所用仪器如秒表、电子分析天平（万分之一）、容量瓶、量筒等均为通用且高精度设备，能够满足溶解度测试的需求。
-                - 具塞刻度试管的设计有助于确保实验过程中样品与溶剂混合的均匀性和密封性，减少外界环境对实验结果的影响。
+ ### 参考依据
 
-                3. **操作方法合理性**
-                - 实验采用“强力振摇30秒”的方式模拟实际溶解过程，符合《中国药典》等相关规范中关于溶解度测定的操作要求。
-                - 测试条件（25℃±2℃）也符合药物溶解度研究的标准温度范围，能够反映药物在接近人体生理条件下的溶解性能。
-                - 通过间隔时间记录溶解情况（每5分钟观察一次），并持续观察30分钟，确保了实验数据的准确性和可靠性。
-
-                综上所述，该检测方法具有科学性和合理性，符合相关行业标准和实际需求。
-
-                ### 参考依据
-
-                - 检测方法参考了《中国药典》中关于溶解度测定的相关规定。
-                - 操作细节符合常规药物溶解度研究的技术要求。`,
+ - 检测方法参考了《中国药典》中关于溶解度测定的相关规定。 
+ - 操作细节符合常规药物溶解度研究的技术要求。`,
             content:"",
             report:"",
             isExpanded: false, // 控制搜索框展开状态
             searchKeyword: "", // 搜索关键词
+            isSearchLoading:false,
+            searchLoadingText:"正在努力搜索中...",
+            searchResults: [], // 搜索结果
+            referenceData: {},       // 文档引用数据
+            selectedDocId: null,     // 当前选中的文档ID
+            selectedDocContent:null,// 当前选中的文档内容
             eventSource:null,
             // 新增数据项
             displayReport: "",      // 实际显示的内容
@@ -50,7 +56,6 @@ new Vue({
             charIndex: 0,
             typingSpeed: 50 ,        // 打字速度（毫秒/字符）
             selectedChapterIndex: 0,
-            isSourceView: false,
             expDialogVisible: false,
             uploadDialogVisible: false,
             uploadForm:{
@@ -73,11 +78,33 @@ new Vue({
             sectionList: [],    // 章节列表
             selectedDoc: '',     // 当前选中的文档ID
             selectedSection: '' ,// 当前选中的章节ID
+
+            selectedExpSection1:'',
+            selectedExpSection2:'',
             newExperience: '',
-            experiences: [],
+            experiences: [
+                // "结构确证项目应全面，应能充分证明原料药的平面结构与立体结构。",
+                // "结合文献调研信息以及工艺开发研究，具有多晶型、溶剂化物或水合物等多种物理形态的，应进行相关确证",
+                // "并且关注原料药批间晶型一致性以及放置过程的晶型稳定性等。 "
+                "1.依据相关指导原则简述各主要质量控制项目（如有关物质、异构体、残留溶剂、含量等）的分析方法筛选与确定的过程，并与现行版国内外药典收载方法参数列表对比。如有研究但未列入质量标准的项目，需一并提供分析方法描述、限度等。 ",
+      "2.有关物质：简述分析方法筛选依据，明确色谱条件筛选所用样品（明确已知杂质信息，也可以采用粗品/粗品母液、合理设计降解试验样品等）及纯度，筛选项目及评价指标、考察结果等。如适用，列表对比自拟方法与药典方法检出能力（建议采用影响因素试验样品或加速试验样品、合理设计降解试验样品等），自拟方法的分离检出能力应不低于药典标准。提供专属性典型图谱（如系统适用性图谱、混合杂质对照品图谱等）。用表格形式表示：|有关物质|拟定注册标准|ChP（版本号）|BP（版本号）|USP（版本号）|EP（版本号）|其他|\n|方法|\n|色谱柱|\n|流动相及洗脱程序|\n|流速|\n|柱温|\n|检测波长|\n|进样体积|\n|稀释剂|\n|供试品溶液浓度|\n|对照（品）溶液浓度|\n|……|\n|定量方式",
+      "3.如适用，请提供有关物质自拟方法与药典方法检出结果对比。",
+      "4.研究但未订入标准的项目：参照中国药典格式提供各项目的分析方法。 ",
+      "5.质量标准各项目分析方法的建立均应具有依据。",
+      "6.有关物质分析方法筛选时，应在杂质谱分析全面的基础上，结合相关文献，科学选择分析方法。可以在原料药中加入限度浓度的已知杂质，证明拟定的有关物质分析方法可以单独分离目标杂质和/或使杂质与主成分有效分离；也可以采用含适量杂质的样品（如粗品或粗品母液、适当降解样品、稳定性末期样品等），对色谱条件进行比较优选研究，根据对杂质的检出能力选择适宜的色谱条件，建立有关物质分析方法。对于已有药典标准收载的，应结合原料药工艺路线分析药典标准分析方法的适用性，拟定的有关物质分析方法分离检出能力和杂质控制要求应不低于药典标准。", 
+      "7.同时，需关注稳定性考察期间总杂增加与含量下降的匹配性，如出现不匹配情况，需关注有关物质与含量测定分析方法的专属性、杂质校正因子影响等，必要时优化分析方法。"
+            ],
+            requireFileList:[],
+            requireList:[],
+            requireFilteredList: [], 
+            isSourceView: false,
             sourceSearchQuery: '', // 来源搜索关键词
             sources: [], // 原始来源数据
             filteredSources: [], // 过滤后的来源数据
+            isStepView: false,
+            filteredSteps: [
+                
+              ],// 过滤后的来源数据
             searchContents:"",//搜素
             filteredSearchList:[],
             isGenerating: false,
@@ -121,6 +148,23 @@ new Vue({
         // Markdown 编译计算属性
         compiledMarkdown() {
             return marked.parse(this.formatMarkdown(this.displayReport) || '');
+            // return marked.parse(window.raw_report|| '');
+        },
+        markedContent(){
+            return marked.parse(this.formatMarkdown(this.content) || '');
+            // return marked.parse(this.formatMarkdown(window.raw_content) || '');
+        },
+        // 合并所有搜索结果内容
+        mergedContent() {
+            return this.searchResults.map(item => item.content).join("\n\n");
+        },
+    
+        // 将 reference 对象转换为数组
+        referenceList() {
+            return Object.entries(this.referenceData).map(([doc_id, value]) => ({
+                doc_id,
+                ...value
+            }));
         }
     },    
     methods: {
@@ -137,7 +181,7 @@ new Vue({
           async getSectionId(docId) {
             // 调用后端接口获取章节列表
             try {
-                const response = await fetch(`http://127.0.0.1:5000//get_ectd_sections/${docId}`, {
+                const response = await fetch(`http://${SERVER_HOST}:5000/get_ectd_sections/${docId}`, {
                     method: 'POST',
                 });
                 
@@ -171,7 +215,7 @@ new Vue({
                 const docKey = `${this.selectedDoc}${this.selectedSection}`;
                 console.log("docKey为:",docKey)
                 try {
-                    const response = await fetch(`http://127.0.0.1:5000//get_ectd_content/${docKey}`, {
+                    const response = await fetch(`http://${SERVER_HOST}:5000/get_ectd_content/${docKey}`, {
                         method: 'POST',
                     });
                     
@@ -194,13 +238,15 @@ new Vue({
             if(this.eventSource) {
                 this.eventSource = null
             }
-            this.eventSource = new EventSource('http://127.0.0.1:5000/stream_logs');
+            this.eventSource = new EventSource(`http://${SERVER_HOST}:5000/stream_logs`);
             this.eventSource.onmessage = (e) => {
                 
                 const msg = JSON.parse(e.data);
                 console.log('Received log:', msg);
                 const { task, data } = JSON.parse(e.data)
                 this.streamContent = `[${task}] ${data}\n`
+                console.log('Received log:', this.streamContent);
+                this.filteredSteps.push(this.streamContent)
                 // 自动滚动到底部
                 // this.$nextTick(() => {
                 //     const textarea = document.getElementById('streamConsole')
@@ -253,12 +299,13 @@ new Vue({
             formData.append('affect_range', affect_range);
             console.log("formData为",formData)
             try {
-                const res = await fetch('http://127.0.0.1:5000/upload_file',  {
+                const response = await fetch(`http://${SERVER_HOST}:5000/upload_file`,  {
                     
                     method: 'POST',
                     body: formData, // 注意：不要手动设置 Content-Type
                 });
-                
+                 res = await response.json();
+                 console.log("res.data为：",res)
                 if (res.data.status === 1) {
                   this.$message.success('上传成功');
                   this.fileList = [];
@@ -300,7 +347,7 @@ new Vue({
         async getClassification() {
             // 调用后端接口获取章节列表
             try {
-                const response = await fetch(`http://127.0.0.1:5000/get_file_classification`, {
+                const response = await fetch(`http://${SERVER_HOST}:5000/get_file_classification`, {
                     method: 'POST',
                 });
                 
@@ -320,7 +367,7 @@ new Vue({
             const classification = this.selectedCategory;
             console.log("classification:",classification)
             try {
-                const response = await fetch(`http://127.0.0.1:5000/get_file_by_class/${classification}`, {
+                const response = await fetch(`http://${SERVER_HOST}:5000/get_file_by_class/${classification}`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                 });
@@ -344,7 +391,7 @@ new Vue({
         //获取Ectd列表
         async getEctdList() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/get_ectd_info_list', {
+                const response = await fetch(`http://${SERVER_HOST}:5000/get_ectd_info_list`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                 });
@@ -364,7 +411,7 @@ new Vue({
         //     try {
               
         //       console.log("docId为：",docId)
-        //       const response = await fetch(`http://127.0.0.1:5000//parse_ectd/${docId}`, {
+        //       const response = await fetch(`http://${SERVER_HOST}:5000//parse_ectd/${docId}`, {
         //         method: 'POST',
         //     });
         //       const res = await response.json();
@@ -386,42 +433,6 @@ new Vue({
             if(docClassification == 'eCTD') this.handleEctdParse(docId);
             else this.handleFileParse(docId);
         },
-        //解析进度
-        async handleEctdParseSSE(docId){
-            this.showParseProgress = true;
-
-            // if(this.eventSourceParse) {
-            //     this.eventSourceParse = null
-            // }
-            // this.eventSourceParse = new EventSource(`http://127.0.0.1:5000/parse_ectd_stream/${docId}`);
-            // this.eventSourceParse.onmessage = (e) => {
-                
-            //     const msg = JSON.parse(e.data);
-            //     console.log('Received log:', msg);
-            //     const { cur_section, total_section } = msg
-            //     this.parseLoading = cur_section / total_section *100;
-            //     // 自动滚动到底部
-            //     // this.$nextTick(() => {
-            //     //     const textarea = document.getElementById('streamConsole')
-            //     //     if(textarea) {
-            //     //         textarea.scrollTop = textarea.scrollHeight
-            //     //     }
-            //     // })
-            // };
-            // if (cur_section === total_section) {
-            //     this.handleParseSSEComplete()
-            // }
-
-            // this.eventSourceParse.onerror = (e) => {
-            //     console.error('SSE error:', e)
-            //     this.handleParseSSEComplete()
-            // }
-            // this.eventSourceParse.onerror = (e) => {
-            //     console.error('Error:', e);
-            //     this.eventSourceParse.close();
-            // };
-
-        },
         handleParseSSEComplete(){
             this.showParseProgress = false;
             if(this.eventSourceParse) {
@@ -438,7 +449,7 @@ new Vue({
             
                 try {
                 const response = await fetch(
-                    `http://127.0.0.1:5000/parse_ectd_stream/${docId}`,
+                    `http://${SERVER_HOST}:5000/parse_ectd_stream/${docId}`,
                     {
                     method: 'GET',
                     signal: this.abortController.signal
@@ -511,7 +522,7 @@ new Vue({
           //解析非eCTD文件
           async handleFileParse(docId) {
             try {
-              const response = await fetch(`http://127.0.0.1:5000/add_to_kd/${docId}`, {
+              const response = await fetch(`http://${SERVER_HOST}:5000/add_to_kd/${docId}`, {
                 method: 'POST',
             });
               const res = await response.json();
@@ -535,7 +546,7 @@ new Vue({
               });
               console.log("docId为：",docId)
               
-              const response = await fetch(`http://127.0.0.1:5000/delete_ectd/${docId}`, {
+              const response = await fetch(`http://${SERVER_HOST}:5000/delete_ectd/${docId}`, {
                 method: 'POST',
             });
               const res = await response.json();
@@ -557,17 +568,37 @@ new Vue({
 
         // 生成章节结论
         async fetchData() {
+            const params = {
+                content:this.content,
+                content_section:this.selectedSection,
+                review_require_list:this.experiences
+
+            }
+            console.log("params:",params)
             try {
-                const response = await fetch('http://127.0.0.1:5000/test', {
+                const response = await fetch(`http://${SERVER_HOST}:5000/review_text`, {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
                 });
+                console.log("response:",response)
                 
                 const res = await response.json();
+                console.log("res:",res)
+
                 if (res.code === 200) {
                     this.results = res.data;
                     console.log("this.results:",this.results)
-                    this.report = this.results.final_report[0].report.content;
-                    const text = this.formatMarkdown(this.markdownText)
+                    this.results.review_result_list = this.results.review_result_list
+                    .filter(item => item && item.conclusion && item.conclusion.content && item.conclusion.content) // 过滤掉空元素
+                    console.log("this.results.review_result_list:",this.results.review_result_list)
+                    this.report = this.results.review_result_list
+                    .filter(item => item && item.conclusion && item.conclusion.content && item.conclusion.content) // 过滤掉空元素
+                    .map(item => item.conclusion.content) // 提取每个 conclusion.content
+                    .join('\n\n'); // 用两个换行符拼接每个结论，确保段落之间有清晰的分隔
+                    const text = this.formatMarkdown(this.report)
 
                     this.startTypewriterEffect();
                     console.log("this.report:",this.report)
@@ -579,44 +610,31 @@ new Vue({
             }
         },
         formatMarkdown(text) {
-              // 1. 去除多余的空格和换行符
-    text = text.replace(/\s+/g, ' ').trim();
+                // 保留原始换行符，避免过早替换导致结构丢失
+            text = text
+            // 1. 标准化换行符（统一为 \n）
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
 
-    // 2. 将多个空格替换为单个空格
-    text = text.replace(/ +/g, ' ');
+            // 2. 处理标题格式（保证标题前后空行）
+            .replace(/(\n|^)(#{1,6} )/g, '\n\n$2')  // 标题前空行
+            .replace(/(\n#{1,6}.*?)(\n)(?=\S)/g, '$1\n\n') // 标题后空行
 
-    // 3. 修复标题格式（确保各级标题前后有空行）
-    // 先处理三级标题
-    text = text.replace(/(### .+)/g, '\n\n$1\n\n');
-    // 再处理二级标题
-    text = text.replace(/(## .+)/g, '\n\n$1\n\n');
-    // 最后处理一级标题
-    text = text.replace(/(# .+)/g, '\n\n$1\n\n');
+            // 3. 处理列表项（统一使用 - 符号）
+            .replace(/(\n|^)\s*(\d+)\./g, '\n-')    // 有序转无序
+            .replace(/(\n- [^\n]+)(\n+)(?=- )/g, '$1\n') // 列表项间空行
+            .replace(/(\n- .+?)(\n)(?=\S)/g, '$1  \n')   // 列表内换行
 
-    // 4. 修复列表项格式（确保列表项前有换行）
-    text = text.replace(/(\d+\.\s+)/g, '\n$1'); // 有序列表
-    text = text.replace(/(-\s+)/g, '\n$1');     // 无序列表
+            // 4. 处理段落结构
+            .replace(/(\n\n)([^\n#-])/g, '\n\n$2')  // 段落前空行
+            .replace(/([^\n])(\n)([^\n#-])/g, '$1  \n$3') // 段内换行
 
-    // 5. 修复列表项内部的换行（确保列表项内部的换行是两个空格）
-    text = text.replace(/(\n\s*-\s+[^\n]+)\s+/g, '$1  \n'); // 无序列表
-    text = text.replace(/(\n\s*\d+\.\s+[^\n]+)\s+/g, '$1  \n'); // 有序列表
+            // 5. 清理多余空行和空格
+            .replace(/\n{3,}/g, '\n\n')    // 最多保留两个空行
+            .replace(/ +/g, ' ')           // 合并连续空格
+            .replace(/(^\s+|\s+$)/g, '');  // 去除首尾空格
 
-    // 6. 修复段落换行（确保段落之间有空行）
-    text = text.replace(/(\n{2,})/g, '\n\n');
-
-    // 7. 去除多余的空行
-    text = text.replace(/\n{3,}/g, '\n\n');
-
-    // 8. 修复标题下的内容换行（确保标题和内容之间有空行）
-    text = text.replace(/(\n##+ .+\n)([^#])/g, '$1\n$2');
-
-    // 9. 修复标题下的列表项换行（确保标题和列表项之间有空行）
-    text = text.replace(/(\n##+ .+\n)(\d+\.\s+|-\s+)/g, '$1\n$2');
-
-    // 10. 修复段落内的多余空格（确保段落内没有多余的空格）
-    text = text.replace(/(\n\s+)([^-\d])/g, '\n$2');
-
-    return text.trim();
+            return text;
         },
 
         // 生成章节结论
@@ -682,10 +700,15 @@ new Vue({
         // 显示结论来源
         showSource() {
             this.isSourceView = true;
+            this.isStepView = false;
+            this.results.review_result_list = this.results.review_result_list
+                    .filter(item => item && item.conclusion && item.conclusion.content && item.conclusion.content) // 过滤掉空元素
+                    console.log("this.results.review_result_list:",this.results.review_result_list)
             this.filteredSources = this.results.review_require_list.map((item, index) => ({
                 review_require: item,
-                review_result: this.results.review_result_list[index].conclusion.content || ''
+                // review_result: this.results.review_result_list[index].conclusion.content || ''
               }))
+              console.log("this.filteredSources:",this.filteredSources)
         },
          // 删除来源
          async deleteSource(index) {
@@ -693,27 +716,66 @@ new Vue({
         
         },
 
+        // 显示结论来源
+        showStep() {
+            this.isStepView = true;
+            this.isSourceView = false;
+              console.log("this.filteredSources:",this.filteredSources)
+        },
+         // 删除来源
+         async deleteStep(index) {
+            this.filteredSources.splice(index, 1)
+        
+        },
+
         // 返回主页面
         backToMain() {
             this.isSourceView = false;
+            this.isStepView = false;
         },
-
+        //经验管理
         // 显示经验管理弹窗
         showExpDialog() {
             this.expDialogVisible = true;
         },
 
+        handleExpFilter(){
+
+        },
+
         // 添加经验
-        addExperience() {
+        async addExperience() {
             if (this.newExperience.trim()) {
-                this.experiences.push({ content: this.newExperience });
+                const newExperience = this.newExperience
+                this.experiences.push({newExperience});
                 this.newExperience = '';
             }
+            // const params={
+            //     parent_section:this.selectedExpSection1,
+            //     section_id:this.selectedExpSection2,
+            //     requirement:this.newExperience
+            // }
+            // try {
+            //     const response = await fetch(`http://${SERVER_HOST}:5000/add_requirement`, {
+            //       method: 'POST',
+            //       body:params
+            //   });
+            //     const res = await response.json();
+            //     console.log("res为：",res)  
+            //     if (res.code === 200) {
+            //       this.$message.success('添加要求成功');
+            //       await this.handleFilter();
+            //     } else {
+            //       this.$message.error(res.error);
+            //     }
+            //   } finally {
+             
+            //   }
         },
 
         // 删除经验
-        deleteExperience(index) {
-            this.experiences.splice(index, 1);
+        deleteExperience(sectionId) {
+            
         },
             // 显示上传文件弹窗
             showExpDialog() {
@@ -725,34 +787,63 @@ new Vue({
         //     this.showSearch = !this.showSearch;
         // },
         // 切换搜索框状态
-            toggleSearch() {
-                this.isExpanded = !this.isExpanded;
-                if (this.isExpanded) {
-                this.$nextTick(() => {
-                    this.$refs.searchInput.focus();
-                });
-                }
-            },
-            // 处理悬浮球点击
-            handleBallClick(event) {
-                if (!this.isExpanded) {
-                this.toggleSearch();
-                }
-            },
-            // 执行搜索
-            performSearch() {
-                if (this.searchKeyword.trim()) {
-                alert(`执行搜索：${this.searchKeyword}`);
-                // 实际搜索逻辑...
-                this.searchKeyword = '';
-                }
-            },
-            // 点击外部关闭
-            clickOutsideHandler(event) {
-                if (this.isExpanded && !event.target.closest('.search-container')) {
-                this.toggleSearch();
-                }
-            },
+        toggleSearch() {
+            this.isExpanded = !this.isExpanded;
+            if (this.isExpanded) {
+            this.$nextTick(() => {
+                this.$refs.searchInput.focus();
+            });
+            }
+        },
+        // 处理悬浮球点击
+        handleBallClick(event) {
+            if (!this.isExpanded) {
+            this.toggleSearch();
+            }
+        },
+        // 执行搜索
+        async performSearch() {
+            this.isSearchLoading = true ;
+            if (this.searchKeyword.trim()) {
+                const formData = new FormData();
+                formData.append('query',this.searchKeyword)
+                
+                try { 
+                    const response = await fetch(`http://${SERVER_HOST}:5000/search_by_query`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const res = await response.json();
+                    console.log("res为：",res)
+                    
+                    if (res.code === 200) {
+                        this.$message.success('搜素成功');
+                        this.isSearchLoading = false; 
+                        this.searchResults = res.data.response; // 设置搜索结果
+                        this.referenceData = res.data.reference; // 设置参考文档信息
+                    } else {
+                        this.$message.error(res.error);
+                    }
+                    } catch (error) {
+                        this.$message.error('搜索失败');
+                    }
+                    }
+            
+        },
+        showReferenceContent(row) {
+            this.selectedDocContent = row.content;
+        },
+        
+        // handleBallClick() {
+        // this.isExpanded = !this.isExpanded;
+        // },
+        
+        // 点击外部关闭
+        clickOutsideHandler(event) {
+            if (this.isExpanded && !event.target.closest('.search-container')) {
+            this.toggleSearch();
+            }
+        },
         // 执行搜索
         doSearch() {
             // 模拟搜索逻辑
@@ -776,6 +867,64 @@ new Vue({
         async loadSources() {
         
         },
+        //审评要求
+        //上传审评要求
+         async requireSubmitUpload(){
+            const formData = new FormData();
+            const file = this.fileList[0];
+            console.log("file为",file.raw)
+            formData.append('file', file.raw);
+            const classification = this.uploadForm.classification;
+            const affect_range = this.uploadForm.affect_range;
+            formData.append('classification', classification);
+            formData.append('affect_range', affect_range);
+            console.log("formData为",formData)
+            try {
+                const response = await fetch(`http://${SERVER_HOST}:5000/upload_file`,  {
+                    
+                    method: 'POST',
+                    body: formData, // 注意：不要手动设置 Content-Type
+                });
+                 res = await response.json();
+                 console.log("res.data为：",res)
+                if (res.data.status === 1) {
+                  this.$message.success('上传成功');
+                  this.fileList = [];
+                  console.log("res.data为：",res.data)
+                //   this.getEctdList();
+                  this.handleFilter();
+                }
+                else{
+                    this.$message.error(res.data.msg);
+
+                }
+            } catch (error) {
+                this.$message.error('文件上传失败');
+                console.log("error为：",error,)
+            }
+        },
+        handlePreview(file,fileList){
+            console.log("file为：",file)
+        },
+         //修改文件列表
+        requireHandleChange(file, fileList) {
+            this.requireFileList=fileList;
+            console.log("fileList 为：",fileList )
+        },
+        requireBeforeUpload(file) {
+            this.requireFileLis.push(file)
+            console.log("fileList 为：",fileList )
+            return false; // 阻止默认上传行为
+        },
+        //删除文件列表里的文件
+        requireHandleRemove(file, fileList) {
+            this.requireFileList=fileList;//删除文件列表
+            this.$message({
+                message: '文件删除成功',
+                type: 'info'
+            });
+        },
     },
-    }
+}
+    
 );
