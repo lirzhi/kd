@@ -16,6 +16,7 @@ class SpecificReview:
         if review_state.get("report_require_list", None) == None:
             review_state["report_require_list"] = []
         review_state["review_require_list"] += data
+        produce_handle_info({"task": "【规划分析智能体】", "data":f"获取指导原则要求：{len(review_state['review_require_list'])}条"})
         return review_state
 
     @parallelize_processing(field_to_iterate='review_require_list', result_field='search_plan_list')
@@ -36,7 +37,8 @@ class SpecificReview:
         if ans["response"] != None and type(ans["response"]) != list:
             ans["response"] = [ans["response"]]
         for item in ans["response"]:
-            produce_handle_info({"task": "问题", "data":item.get("question", None)})
+            if item.get("question") != None:
+                produce_handle_info({"task": "【分析智能体】", "data":item.get("question")})
         return ans["response"]
     
     @parallelize_processing(field_to_iterate='search_plan_list', result_field='search_list')
@@ -56,6 +58,7 @@ class SpecificReview:
                 search_list.append(None)
                 logging.warning("tool not found")
                 continue
+            produce_handle_info({"task": "【检索智能体】", "data":'检索工具调用：{tool["tool"]}'})
             parameters = tool["parameter"]
             if parameters == None or len(parameters) == 0:
                 parameters = []
@@ -74,8 +77,6 @@ class SpecificReview:
                 ans = KDService().search_by_query(tool.get("question"))
                 print(f"search by query:{ans}")
             search_list.append(ans)
-        for item in search_list:
-            produce_handle_info({"task": "检索信息", "data":item})
         return search_list
     
     @parallelize_processing(field_to_iterate='review_require_list', result_field='review_result_list')
@@ -83,7 +84,7 @@ class SpecificReview:
         # print("start generate_report_by_require")
         if review_state.get("review_result_list") != None and len(review_state["review_result_list"]) > index:
             return review_state["review_result_list"][index]
-        produce_handle_info({"task": "当前处理要求", "data": review_require})
+        produce_handle_info({"task": "【审评智能体】", "data": f'当前处理审评要求：{review_require}'})
         data = {
             "content": review_state["content"],
             "search_info": review_state["search_list"][index],
@@ -94,7 +95,8 @@ class SpecificReview:
             ans = {
                 "response": None
             }
-        produce_handle_info({"task": "当前处理结果", "data": ans["response"]})
+        if ans["response"] != None and ans["response"].get("content", None) != None :
+            produce_handle_info({"task": "【审评智能体】", "data": ans["response"]})
         return ans["response"]
     
     def generate_final_report(self, review_state: SpecificReviewState):
@@ -119,7 +121,7 @@ class SpecificReview:
         # print("start judge")
         if len(review_state.get("final_report", [])) > 2:
             return "continue"
-        produce_handle_info({"task": "评估", "data": "评估最终报告..."})
+        produce_handle_info({"task": "【评估智能体】", "data": "评估最终报告..."})
         data = {
             "content": review_state["content"],
             "review_require_list": review_state["review_require_list"],
@@ -139,7 +141,7 @@ class SpecificReview:
         review_state["judge_result"].append(ans["response"])
         info = "评估通过" if ans["response"]["step"] == "continue" else f"报告评估未通过，存在问题：{ans['response']['info']}" 
        
-        produce_handle_info({"task": "评估结果", "data": info})
+        produce_handle_info({"task": "【评估智能体】", "data": f'评估结论:{info}'})
         print(ans["response"]["step"])
         return ans["response"]["step"]
         

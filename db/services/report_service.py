@@ -9,10 +9,11 @@ from db.ectd_model import EctdSectionModel
 from db.services.file_service import FileService
 from mutil_agents.memory.specific_review_state import SpecificReviewState
 from mutil_agents.agent import specific_report_generationAgent_graph
+from utils.common_util import produce_handle_info
 
 ReportInfo = {
         "status": 0,
-        "message": "success",
+        "message": "",
         "data": None
 }
 
@@ -42,9 +43,11 @@ class ReportService:
 
     def generate_report_by_section(self, section_id, section_name, content):
         # 按章节生成内容,生成完成后将内容存入数据库，并返回生成的内容
+        produce_handle_info({"task": "【当前处理进度】", "data":f"章节ID：{section_id}，章节名称：{section_name}"})
         review_state = SpecificReviewState()
         review_state["content"] = content
-        review_state["content_section"] = section_name
+        review_state["content_section"] = section_id
+        review_state["content_section_name"] = section_name
         review_require_list = self.redis_conn.get(f"principle+{section_id}")
         if review_require_list is None:
             logging.warning(f"{section_id}章节要求不存在")
@@ -109,12 +112,13 @@ class ReportService:
         # Logic to update an existing report in the database
         resp_info = deepcopy(ReportInfo)
         judge_info = self.ectd_judge(doc_id)
+        if judge_info["status"] == 0:
+            return judge_info
+        
         if len(self.redis_conn.keys(f"review_content+{doc_id}*")) == 0:
             resp_info["message"] = "还没有章节生成报告内容"
             resp_info["status"] = 0
             return resp_info
-        if judge_info["status"] == 0:
-            return judge_info
         
         # 1. 根据框架获取所有章节信息
         report = deepcopy.deepcopy(EctdSectionModel)
