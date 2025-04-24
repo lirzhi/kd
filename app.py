@@ -219,6 +219,7 @@ def review_text():
 @cross_origin()
 def review_section():
     start_time = time.time()
+    doc_id = request.json.get('section_id')
     content = request.json.get('content')
     section_name = request.json.get('section_name')
     section_id = request.json.get('section_id')
@@ -226,7 +227,7 @@ def review_section():
         logging.error('No review content provided')
         return ResponseMessage(400, 'No review content provided', None).to_json()
     
-    review_state = ReportService().generate_report_by_section(section_id, section_name, content)
+    review_state = ReportService().generate_report_by_section(doc_id, section_id, section_name, content)
     end_time = time.time()
     execution_time = end_time - start_time
     print(f"执行时间: {execution_time} 秒")
@@ -324,7 +325,7 @@ def parse_ectd(doc_id):
     section_ids = []
     redis_conn = RedisDB()
     for item in cleaned_data.get("content", []):
-        redis_conn.set(f'section_content+{doc_id}+{item.get("section_id")}', json.dumps(item), None) 
+        redis_conn.set(f'section_content+{doc_id}+{item.get("section_id")}', json.dumps(item)) 
         section_ids.append(item.get("section_id")) 
     rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
     
@@ -407,7 +408,7 @@ def parse_ectd_stream(doc_id):
             for item_content in cleaned_data.get("content", []):
                 print(item_content)
                 f'section_content+{doc_id}+{item.get("section_id")}'
-                redis_conn.set(f'section_content+{doc_id}+{item_content.get("section_id")}', json.dumps(item_content), None)
+                redis_conn.set(f'section_content+{doc_id}+{item_content.get("section_id")}', json.dumps(item_content))
 
             rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
             FileService().update_file_chunk_by_id(doc_id, len(section_ids), ";".join(section_ids))
@@ -502,7 +503,7 @@ def set_report_content():
         logging.error('No doc_id, section_id or content provided')
         return ResponseMessage(400, 'No doc_id, section_id or content provided', None).to_json()
     redis_conn = RedisDB()
-    flag = redis_conn.set(f"review_content+{doc_id}+{section_id}", json.dumps(content), -1)
+    flag = redis_conn.set(f"review_content+{doc_id}+{section_id}", json.dumps(content))
     if not flag:
         logging.error(f'Failed to set content for doc_id: {doc_id}, section_id: {section_id}')
         return ResponseMessage(400, f'Failed to set content for doc_id: {doc_id}, section_id: {section_id}', None).to_json()
@@ -534,7 +535,7 @@ def set_principle_content():
         logging.error('Content is not a list')
         return ResponseMessage(400, 'Content is not a list', None).to_json()
     redis_conn = RedisDB()
-    flag = redis_conn.set(f"principle_content+{section_id}", json.dumps(content), -1)
+    flag = redis_conn.set(f"principle_content+{section_id}", json.dumps(content))
     if not flag:
         logging.error(f'Failed to set principle content for doc_id: section_id: {section_id}')
         return ResponseMessage(400, f'Failed to set principle content for doc_id: section_id: {section_id}', None).to_json()
@@ -542,7 +543,7 @@ def set_principle_content():
 
 @app.route('/get_ectd_content', methods=['GET','POST'])
 @cross_origin()
-def get_ectd_content(ectd_key):
+def get_ectd_content():
     doc_id = request.json.get('doc_id')
     section_id = request.json.get('section_id')
     if not doc_id or not section_id:
@@ -589,4 +590,4 @@ def stream_logs():
     )
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

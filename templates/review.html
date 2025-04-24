@@ -20,7 +20,8 @@
               <el-menu default-active="1" class="menu-container" @select="handleMenuSelect">
                 <el-menu-item index="1"><i class="el-icon-document"></i><span>报告生成</span></el-menu-item>
                 <el-menu-item index="2"><i class="el-icon-files"></i><span>审评要求</span></el-menu-item>
-                <el-menu-item index="3"><i class="el-icon-files"></i><span>文件管理</span></el-menu-item>
+                <el-menu-item index="3"><i class="el-icon-files"></i><span>CTD管理</span></el-menu-item>
+                <el-menu-item index="4"><i class="el-icon-files"></i><span>知识库管理</span></el-menu-item>
               </el-menu>
             </el-aside>
       
@@ -214,16 +215,16 @@
             </div>
         </el-dialog>
         
-        <!-- 文件管理对话框 -->
-        <el-dialog title="文件管理" :visible.sync="uploadDialogVisible" width="60%" :height="dialogHeight" custom-class="ectd-dialog">
+        <!-- ctd管理对话框 -->
+        <el-dialog title="CTD管理" :visible.sync="uploadDialogVisible" width="60%" :height="dialogHeight" custom-class="ectd-dialog">
             <template slot="title">
-            <div class="dialog-title">文件管理</div>
+            <div class="dialog-title">CTD管理</div>
             </template>
         
             <el-card class="dialog-card">
             <div slot="header" class="card-header"><span>文件上传</span></div>
             <el-form ref="form" :model="uploadForm" label-width="80px">
-                <el-form-item label="类别"><el-input v-model="uploadForm.classification"/></el-form-item>
+                <!-- <el-form-item label="类别"><el-input v-model="uploadForm.classification"/></el-form-item> -->
                 <el-form-item label="影响范围"><el-input v-model="uploadForm.affect_range"/></el-form-item>
             </el-form>
             
@@ -237,14 +238,11 @@
             <el-card class="dialog-card">
             <div slot="header" class="card-header filter-header">
                 <div class="filter-container">
-                <el-select v-model="selectedCategory" placeholder="选择类别" clearable style="width:200px;margin-right:15px" @focus="getClassification">
-                    <el-option v-for="item in categoryOptions" :key="item" :label="item" :value="item"/>
-                </el-select>
-                <el-button type="primary" @click="handleFilter" :disabled="!selectedCategory">查看</el-button>
+                <el-button type="primary" @click="handleECTDFilter">查看</el-button>
                 </div>
             </div>
         
-            <el-table :data="filteredList" style="width:100%" border>
+            <el-table :data="filteredECTDList" style="width:100%" border>
                 <el-table-column prop="doc_classification" label="文档类别" width="180"> </el-table-column>
                 <el-table-column prop="doc_id" label="文档ID" width="180"> </el-table-column>
                 <el-table-column prop="file_name" label="文件名称"> </el-table-column>
@@ -258,7 +256,7 @@
                 <el-table-column label="操作" width="200" fixed="right">
                 <template v-slot="scope">
                     <el-button size="mini" type="primary" :disabled="scope.row.parse_status" 
-                    @click="handleParse(scope.row.doc_classification,scope.row.doc_id)">解析</el-button>
+                    @click="handleParse('eCTD',scope.row.doc_id)">解析</el-button>
                     <el-button size="mini" type="danger" @click="handleDelete(scope.row.doc_id)">删除</el-button>
                 </template>
                 </el-table-column>
@@ -272,6 +270,64 @@
             </el-card>
             </div>
         </el-dialog>
+        <!-- 知识库管理对话框 -->
+        <el-dialog title="知识库管理" :visible.sync="kdDialogVisible" width="60%" :height="dialogHeight" custom-class="ectd-dialog">
+          <template slot="title">
+          <div class="dialog-title">知识库管理</div>
+          </template>
+      
+          <el-card class="dialog-card">
+          <div slot="header" class="card-header"><span>文件上传</span></div>
+          <el-form ref="form" :model="uploadForm" label-width="80px">
+              <el-form-item label="类别"><el-input v-model="uploadForm.classification"/></el-form-item>
+              <el-form-item label="影响范围"><el-input v-model="uploadForm.affect_range"/></el-form-item>
+          </el-form>
+          
+          <el-upload class="upload-demo" ref="upload" action="" :auto-upload="false" 
+              :file-list="fileList" :before-upload="beforeUpload" :on-change="handleChange">
+              <el-button slot="trigger" size="small" type="primary">选取文件</el-button>
+              <el-button size="small" type="success" @click="submitUpload" style="margin-left:10px">上传到服务器</el-button>
+          </el-upload>
+          </el-card>
+      
+          <el-card class="dialog-card">
+          <div slot="header" class="card-header filter-header">
+              <div class="filter-container">
+              <el-select v-model="selectedCategory" placeholder="选择类别" clearable style="width:200px;margin-right:15px" @focus="getClassification">
+                  <el-option v-for="item in categoryOptions" :key="item" :label="item" :value="item"/>
+              </el-select>
+              <el-button type="primary" @click="handleFilter" :disabled="!selectedCategory">查看</el-button>
+              </div>
+          </div>
+      
+          <el-table :data="filteredList" style="width:100%" border>
+              <el-table-column prop="doc_classification" label="文档类别" width="180"> </el-table-column>
+              <el-table-column prop="doc_id" label="文档ID" width="180"> </el-table-column>
+              <el-table-column prop="file_name" label="文件名称"> </el-table-column>
+              <el-table-column label="解析状态" width="120">
+              <template v-slot="scope">
+                  <el-tag :type="scope.row.parse_status ? 'success' : 'warning'">
+                  {{ scope.row.parse_status ? '已解析' : '未解析' }}
+                  </el-tag>
+              </template>
+              </el-table-column>
+              <el-table-column label="操作" width="200" fixed="right">
+              <template v-slot="scope">
+                  <el-button size="mini" type="primary" :disabled="scope.row.parse_status" 
+                  @click="handleParse(scope.row.doc_classification,scope.row.doc_id)">解析</el-button>
+                  <el-button size="mini" type="danger" @click="handleDelete(scope.row.doc_id)">删除</el-button>
+              </template>
+              </el-table-column>
+          </el-table>
+          </el-card>
+      
+          <div v-if="showParseProgress">
+          <el-card class="dialog-card">
+              <span>解析进度: {{parseProgress}}%</span>
+              <el-progress :percentage="parseProgress" :stroke-width="18" :status="progressStatus" striped/>
+          </el-card>
+          </div>
+      </el-dialog>
        
     </div>
     <!-- 引入Vue.js -->

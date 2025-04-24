@@ -41,7 +41,7 @@ class ReportService:
             resp_info["message"] = "eCTD未解析,解析后在试"
             return resp_info    
 
-    def generate_report_by_section(self, section_id, section_name, content):
+    def generate_report_by_section(self, doc_id, section_id, section_name, content):
         # 按章节生成内容,生成完成后将内容存入数据库，并返回生成的内容
         produce_handle_info({"task": "【当前处理进度】", "data":f"章节ID：{section_id}，章节名称：{section_name}"})
         review_state = SpecificReviewState()
@@ -54,6 +54,7 @@ class ReportService:
             review_require_list = []
         review_state["review_require_list"] = review_require_list
         result = specific_report_generationAgent_graph.invoke(review_state)
+        review_require_list = self.redis_conn.set(f"review_content+{doc_id}+{section_id}", -1)
         return result
         
 
@@ -76,7 +77,7 @@ class ReportService:
                 if section_content is None:
                     logging.warning(f"{doc_id}章节内容不存在，章节ID：{section_id}")
                     continue
-                section_report = self.generate_report_by_section(section_id, section_name, section_content)
+                section_report = self.generate_report_by_section(doc_id, section_id, section_name, section_content)
                 section["report"] = section_report["final_report"]
             else:
                 # 章节有子章节，递归生成内容

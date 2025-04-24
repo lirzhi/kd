@@ -14,7 +14,7 @@ def upload_principle(file_path):
     redis_conn  = RedisDB()
     count = 0
     for key, value in data.items():
-        redis_conn.set(f"principle+{key}", json.dumps(value), None)
+        redis_conn.set(f"principle+{key}", json.dumps(value), -1)
         ++count
     logging.info(f"upload_principle success, count: {count}")
 
@@ -32,7 +32,7 @@ def upload_analize(file_path):
     redis_conn  = RedisDB()
     count = 0
     for key, value in data.items():
-        redis_conn.set(f"principle+{key}", json.dumps(value), None)
+        redis_conn.set(f"principle+{key}", json.dumps(value), -1)
         ++count
     logging.info(f"upload_principle success, count: {count}")
 

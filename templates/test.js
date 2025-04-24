@@ -1,5 +1,5 @@
 const SERVER_HOST = '127.0.0.1'
-const SERVER_PORT = '5001'
+const SERVER_PORT = '5000'
 // 配置 marked 全局选项
 marked.setOptions({
     breaks: true,       // 将换行符转换为 <br>（关键配置）
@@ -59,14 +59,17 @@ new Vue({
             selectedChapterIndex: 0,
             expDialogVisible: false,
             uploadDialogVisible: false,
+            kdDialogVisible: false,
             uploadForm:{
                 classification:"",
                 affect_range:""
 
             },
             dialogHeight: `${window.innerHeight * 0.66}px`, // 弹窗高度
+            filteredECTDList:[],
             selectedCategory: '',      // 当前选中的分类
             categoryOptions: [],       // 分类选项
+            
             filteredList: [],          // 过滤后的列表
             // 其他原有数据保持不变
             fileList:[],
@@ -286,6 +289,14 @@ new Vue({
         // 文件上传方法
         showUploadDialog(){
             this.uploadDialogVisible = true;
+            this.uploadForm.classification = "",
+            this.uploadForm.affect_range = ""
+            this.getClassification();
+        },
+        showKDDialog(){
+            this.kdDialogVisible = true;
+            this.uploadForm.classification = "",
+            this.uploadForm.affect_range = ""
             this.getClassification();
         },
         //上传文件
@@ -294,7 +305,7 @@ new Vue({
             const file = this.fileList[0];
             console.log("file为",file.raw)
             formData.append('file', file.raw);
-            const classification = this.uploadForm.classification;
+            const classification = this.showUploadDialog?'eCTD':this.uploadForm.classification;
             const affect_range = this.uploadForm.affect_range;
             formData.append('classification', classification);
             formData.append('affect_range', affect_range);
@@ -344,6 +355,32 @@ new Vue({
                 type: 'info'
             });
         },
+        // 过滤ectd列表
+        async handleECTDFilter() {
+            const classification = 'eCTD';
+            console.log("classification:",classification)
+            try {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/get_file_by_class/${classification}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                });
+                
+                const res = await response.json();
+                console.log("data为：",res)
+                if (res.code === 200) {
+                    // 添加分类字段到每个条目
+                    this.filteredECTDList = res.data.map(item => ({
+                        ...item,
+                        doc_classification: classification // 注意字段名与表格列prop对应
+                    }));
+                    console.log("处理后数据：", this.filteredECTDList);
+                }
+            } catch (error) {
+                console.error('获取eCTD列表失败:', error);
+                this.$message.error('获取eCTD列表失败，请重试');
+            } 
+            
+        },
         //获取类别
         async getClassification() {
             // 调用后端接口获取章节列表
@@ -365,6 +402,7 @@ new Vue({
           },
         // 过滤列表
         async handleFilter() {
+            if(this.uploadDialogVisible == true) this.selectedCategory='eCTD';
             const classification = this.selectedCategory;
             console.log("classification:",classification)
             try {
@@ -440,6 +478,7 @@ new Vue({
                 this.eventSourceParse.close()
             }
             this.handleFilter();
+            this.handleECTDFilter();
 
         },
         //解析eCTD
@@ -555,7 +594,8 @@ new Vue({
               
               if (res.code === 200) {
                 this.$message.success('删除成功');
-                await this.handleFilter();
+                if(this.uploadDialogVisible == true) await this.handleECTDFilter();
+                else await this.handleFilter();
                 await this.getEctdList();
               } else {
                 this.$message.error(res.error);
@@ -857,6 +897,11 @@ new Vue({
             // 处理菜单选择
             if(index === '3') {
                 this.showUploadDialog();
+                // 跳转审批记录页面
+            }
+            // 处理菜单选择
+            if(index === '4') {
+                this.showKDDialog();
                 // 跳转审批记录页面
             }
         },

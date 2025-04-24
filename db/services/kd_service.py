@@ -116,7 +116,7 @@ class KDService:
     def add_explain_word(self, word, explain):
         if self.redis_conn.exist(word):
             logging.warning(f"word {word} already exists. new explain：{explain}")
-        ans = self.redis_conn.set(word, explain)
+        ans = self.redis_conn.set(word, explain,-1)
         # 将word放入分词器的词表中
         jieba.add_word(word)
         return ans
