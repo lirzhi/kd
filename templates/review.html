@@ -46,8 +46,8 @@
                 <el-col v-if="!isSourceView && !isStepView" :span="12">
                   <el-card class="content-card" style="margin-top: 0;">
                     <div class="text-editor-container">
-                      <!-- <el-input type="textarea" v-model="content" :rows="35" placeholder="输入章节内容" class="rounded-editor"/> -->
-                      <div v-html="markedContent" style="height: 80vh; overflow-y: auto;"></div>
+                      <el-input type="textarea" v-model="content" :rows="35" placeholder="输入章节内容" class="rounded-editor"/>
+                      <!-- <div v-html="markedContent" style="height: 80vh; overflow-y: auto;"></div> -->
                     </div>
                   </el-card>
                 </el-col>
@@ -92,7 +92,7 @@
                     <div slot="header" class="report-header">
                       <span>审评报告</span>
                       <div> 
-                        <el-button type="primary" @click="generateReport" style="margin-left: 10px;">生成报告</el-button>
+                        <el-button type="primary" @click="generateSectionReport" style="margin-left: 10px;">生成章节报告</el-button>
                         <el-button type="info" @click="showStep">生成过程</el-button>
                         <el-button type="info" @click="showSource">结论来源</el-button>
                         <el-button type="danger" @click="regenerate">重新生成</el-button>

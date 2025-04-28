@@ -7,6 +7,7 @@ from db.dbutils import singleton
 from db.dbutils.redis_conn import RedisDB
 from db.ectd_model import EctdSectionModel
 from db.services.file_service import FileService
+from utils.file_util import ensure_dir_exists
 from mutil_agents.memory.specific_review_state import SpecificReviewState
 from mutil_agents.agent import specific_report_generationAgent_graph
 from utils.common_util import produce_handle_info
@@ -18,6 +19,7 @@ ReportInfo = {
 }
 
 REPORT_DIR = "data/reports/"  # Set the target folder for report generation
+ensure_dir_exists(REPORT_DIR)
 @singleton
 class ReportService:
     def __init__(self):
@@ -39,7 +41,12 @@ class ReportService:
         
         if file_info.is_chunked != 1:
             resp_info["message"] = "eCTD未解析,解析后在试"
-            return resp_info    
+            return resp_info   
+        # 所有检查通过，标记为成功
+        resp_info["status"] = 1
+        resp_info["message"] = "eCTD文件验证通过"
+        resp_info["data"] = file_info  # 可选：返回文件信息供后续使用
+        return resp_info 
 
     def generate_report_by_section(self, doc_id, section_id, section_name, content):
         # 按章节生成内容,生成完成后将内容存入数据库，并返回生成的内容
@@ -54,7 +61,12 @@ class ReportService:
             review_require_list = []
         review_state["review_require_list"] = review_require_list
         result = specific_report_generationAgent_graph.invoke(review_state)
-        review_require_list = self.redis_conn.set(f"review_content+{doc_id}+{section_id}", -1)
+        flag = self.redis_conn.set(f"review_content+{doc_id}+{section_id}", result["final_report_content"], None)
+        if flag:
+            print("true")
+        else:
+            print("false")
+            print(result["final_report_content"])
         return result
         
 
@@ -63,10 +75,12 @@ class ReportService:
         # 根据eCTD的doc_id生成最终报告
         # 获取doc_id对应的文件信息
         judge_info = self.ectd_judge(doc_id)
+        print(judge_info)
         if judge_info["status"] == 0:
             return judge_info
             
-        report = deepcopy.deepcopy(EctdSectionModel)   
+        # report = deepcopy.deepcopy(EctdSectionModel)   
+        report = deepcopy(EctdSectionModel)
         # 1. 根据框架获取所有章节信息
         for section in report:
             if len(section["children_sections"]) == 0:
@@ -88,7 +102,7 @@ class ReportService:
                     if child_section_content is None:
                         logging.warning(f"{doc_id}章节内容不存在，章节ID：{child_section_id}")
                         continue
-                    content = self.generate_report_by_section(child_section_id, child_section_name, child_section_content)
+                    content = self.generate_report_by_section(doc_id,child_section_id, child_section_name, child_section_content)
                     # 将生成的内容存入数据库
                     child_section["report"] = content["final_report"]
         resp_info["data"] = report
@@ -100,7 +114,7 @@ class ReportService:
         doc.add_heading(f"{section['section_id']} {section['section_name']}", level=level)
         
         # 添加章节正文内容
-        if self.redis_conn.exists(f"review_content+{doc_id}+{section['section_id']}"):
+        if self.redis_conn.exist(f"review_content+{doc_id}+{section['section_id']}"):
             content = self.redis_conn.get(f"review_content+{doc_id}+{section['section_id']}")
             if content:
                 doc.add_paragraph(content)
@@ -122,7 +136,7 @@ class ReportService:
             return resp_info
         
         # 1. 根据框架获取所有章节信息
-        report = deepcopy.deepcopy(EctdSectionModel)
+        report = deepcopy(EctdSectionModel)
 
             # 创建一个新的 Word 文档
         doc = Document()
@@ -142,7 +156,7 @@ class ReportService:
 
     def delete_report(self, doc_id):
         # Logic to delete a report from the database
-        if self.redis_conn.exists(f"review_content+{doc_id}*"):
+        if self.redis_conn.exist(f"review_content+{doc_id}*"):
             self.redis_conn.delete(f"review_content+{doc_id}*")
         if os.path.exists(f"{REPORT_DIR}{doc_id}_report.docx"):
             os.remove(f"{REPORT_DIR}{doc_id}_report.docx")

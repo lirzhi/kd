@@ -201,26 +201,34 @@ new Vue({
 
           },
       
-          async handleView() {
-            if (this.selectedDoc && this.selectedSection) {
-              const docKey = `${this.selectedDoc}${this.selectedSection}`;
-              console.log("docKey为:",docKey)
-              try {
-                await this.getContent(docKey);
-              } catch (error) {
-                console.error('获取内容失败:', error);
-              }
-            }
-          },
+        //   async handleView() {
+        //     if (this.selectedDoc && this.selectedSection) {
+        //       const docKey = `${this.selectedDoc}${this.selectedSection}`;
+        //       console.log("docKey为:",docKey)
+        //       try {
+        //         await this.getContent(docKey);
+        //       } catch (error) {
+        //         console.error('获取内容失败:', error);
+        //       }
+        //     }
+        //   },
           //获取章节内容
       
           async getContent() {
             if (this.selectedDoc && this.selectedSection) {
-                const docKey = `${this.selectedDoc}${this.selectedSection}`;
-                console.log("docKey为:",docKey)
+                // const docKey = `${this.selectedDoc}${this.selectedSection}`;
+                const params={
+                    doc_id:this.selectedDoc,
+                    section_id:this.selectedSection
+                }
+                console.log("params:",params)
                 try {
-                    const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/get_ectd_content/${docKey}`, {
+                    const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/get_ectd_content`, {
                         method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body:JSON.stringify(params)
                     });
                     
                     const res = await response.json();
@@ -324,6 +332,7 @@ new Vue({
                   console.log("res.data为：",res.data)
                 //   this.getEctdList();
                   this.handleFilter();
+                  if(this.uploadDialogVisible == true) this.handleECTDFilter();
                 }
                 else{
                     this.$message.error(res.data.msg);
@@ -544,6 +553,7 @@ new Vue({
                 this.$message.success('解析完成');
                 await this.getEctdList();
                 await this.handleFilter();
+                await this.handleECTDFilter();
                 } catch (err) {
                 if (err.name !== 'AbortError') {
                     this.$message.error(`请求失败: ${err.message}`);
@@ -679,7 +689,7 @@ new Vue({
         },
 
         // 生成章节结论
-        async generateReport() {
+        async generateSectionReport() {
             try {
                 this.isGenerating = true
                 this.streamContent = "" 

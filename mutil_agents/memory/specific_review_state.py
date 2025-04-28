@@ -13,4 +13,5 @@ class SpecificReviewState(TypedDict):
     review_result_list: List        # 评估结果列表
     report_require_list: List[str]  # 报告撰写要求
     final_report: List[str]               # 最终报告
+    final_report_content: str
     judge_result: dict              # 评估结果

@@ -116,7 +116,7 @@ class KDService:
     def add_explain_word(self, word, explain):
         if self.redis_conn.exist(word):
             logging.warning(f"word {word} already exists. new explain：{explain}")
-        ans = self.redis_conn.set(word, explain,-1)
+        ans = self.redis_conn.set(word, explain, None)
         # 将word放入分词器的词表中
         jieba.add_word(word)
         return ans
@@ -166,6 +166,11 @@ class KDService:
             else:
                 reference_map[item["entity"]["doc_id"]] = reference_file_info
         gen = ask_llm_by_prompt_file("mutil_agents/prompts/review/generate_prompt.j2", llm_context)
+        if gen is None :
+            gen = {}
+            gen["response"] = []
+        if gen["response"] is None :
+            gen["response"] = []
         if type(gen["response"]) != list :
             gen["response"] = [gen["response"]]
         llm_resp["response"] = gen["response"]

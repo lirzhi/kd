@@ -2,6 +2,7 @@ import copy
 import json
 import logging
 import time
+from tkinter import N
 from flask import Flask, Response, request, redirect, stream_with_context, url_for, render_template, flash
 from flask_cors import CORS, cross_origin
 
@@ -219,7 +220,7 @@ def review_text():
 @cross_origin()
 def review_section():
     start_time = time.time()
-    doc_id = request.json.get('section_id')
+    doc_id = request.json.get('doc_id')
     content = request.json.get('content')
     section_name = request.json.get('section_name')
     section_id = request.json.get('section_id')
@@ -251,7 +252,7 @@ def export_report():
     if not doc_id:
         logging.error('No doc_id provided')
         return ResponseMessage(400, 'No doc_id provided', None).to_json()
-    info = ReportService.export_report(doc_id)
+    info = ReportService().export_report(doc_id)
     if info["status"] == 0:
         logging.error(f'Failed to export report: {info["message"]}')
         return ResponseMessage(400, f'Failed to export report: {info["message"]}', None).to_json()
@@ -325,7 +326,7 @@ def parse_ectd(doc_id):
     section_ids = []
     redis_conn = RedisDB()
     for item in cleaned_data.get("content", []):
-        redis_conn.set(f'section_content+{doc_id}+{item.get("section_id")}', json.dumps(item)) 
+        redis_conn.set(f'section_content+{doc_id}+{item.get("section_id")}', json.dumps(item), None) 
         section_ids.append(item.get("section_id")) 
     rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
     
@@ -408,7 +409,7 @@ def parse_ectd_stream(doc_id):
             for item_content in cleaned_data.get("content", []):
                 print(item_content)
                 f'section_content+{doc_id}+{item.get("section_id")}'
-                redis_conn.set(f'section_content+{doc_id}+{item_content.get("section_id")}', json.dumps(item_content))
+                redis_conn.set(f'section_content+{doc_id}+{item_content.get("section_id")}', json.dumps(item_content), None)
 
             rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
             FileService().update_file_chunk_by_id(doc_id, len(section_ids), ";".join(section_ids))
@@ -503,7 +504,7 @@ def set_report_content():
         logging.error('No doc_id, section_id or content provided')
         return ResponseMessage(400, 'No doc_id, section_id or content provided', None).to_json()
     redis_conn = RedisDB()
-    flag = redis_conn.set(f"review_content+{doc_id}+{section_id}", json.dumps(content))
+    flag = redis_conn.set(f"review_content+{doc_id}+{section_id}", json.dumps(content), None)
     if not flag:
         logging.error(f'Failed to set content for doc_id: {doc_id}, section_id: {section_id}')
         return ResponseMessage(400, f'Failed to set content for doc_id: {doc_id}, section_id: {section_id}', None).to_json()
@@ -535,7 +536,7 @@ def set_principle_content():
         logging.error('Content is not a list')
         return ResponseMessage(400, 'Content is not a list', None).to_json()
     redis_conn = RedisDB()
-    flag = redis_conn.set(f"principle_content+{section_id}", json.dumps(content))
+    flag = redis_conn.set(f"principle_content+{section_id}", json.dumps(content), None)
     if not flag:
         logging.error(f'Failed to set principle content for doc_id: section_id: {section_id}')
         return ResponseMessage(400, f'Failed to set principle content for doc_id: section_id: {section_id}', None).to_json()

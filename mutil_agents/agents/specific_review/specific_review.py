@@ -115,6 +115,17 @@ class SpecificReview:
         if review_state.get("final_report") == None:
             review_state["final_report"] = []
         review_state["final_report"].append(ans["response"])
+        report_content = ""
+        for report in review_state["final_report"]:
+            if report is None:
+                continue
+            if report.get("report", None) is None:
+                continue
+            if report["report"].get("content", None) is None:
+                continue
+            report_content += report["report"]["content"]
+        review_state["final_report_content"] = report_content
+
         return review_state
     
     def check_report(self, review_state: SpecificReviewState):
