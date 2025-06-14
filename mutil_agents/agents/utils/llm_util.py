@@ -58,8 +58,8 @@ def ask_llm_by_prompt_file(file_name, data="", mode="qwen"):
     answer = ask_llm(template.render(data=data), mode)
     xml_str = extract_xml_str(answer)
     if xml_str:
-            # xml_str = xml_str.replace(r"\n", "")  # 有时模型输出的xml会有很多换行符号，需要去掉
-            # xml_str = xml_str.replace("&", " ")
+            xml_str = xml_str.replace(r"\n", "")  # 有时模型输出的xml会有很多换行符号，需要去掉
+            xml_str = xml_str.replace("&", " ")
             data = convert_xml_to_dict(xml_str)
             if data:
                 return data

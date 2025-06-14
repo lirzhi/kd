@@ -90,13 +90,7 @@ new Vue({
                 // "结构确证项目应全面，应能充分证明原料药的平面结构与立体结构。",
                 // "结合文献调研信息以及工艺开发研究，具有多晶型、溶剂化物或水合物等多种物理形态的，应进行相关确证",
                 // "并且关注原料药批间晶型一致性以及放置过程的晶型稳定性等。 "
-                "1.依据相关指导原则简述各主要质量控制项目（如有关物质、异构体、残留溶剂、含量等）的分析方法筛选与确定的过程，并与现行版国内外药典收载方法参数列表对比。如有研究但未列入质量标准的项目，需一并提供分析方法描述、限度等。 ",
-      "2.有关物质：简述分析方法筛选依据，明确色谱条件筛选所用样品（明确已知杂质信息，也可以采用粗品/粗品母液、合理设计降解试验样品等）及纯度，筛选项目及评价指标、考察结果等。如适用，列表对比自拟方法与药典方法检出能力（建议采用影响因素试验样品或加速试验样品、合理设计降解试验样品等），自拟方法的分离检出能力应不低于药典标准。提供专属性典型图谱（如系统适用性图谱、混合杂质对照品图谱等）。用表格形式表示：|有关物质|拟定注册标准|ChP（版本号）|BP（版本号）|USP（版本号）|EP（版本号）|其他|\n|方法|\n|色谱柱|\n|流动相及洗脱程序|\n|流速|\n|柱温|\n|检测波长|\n|进样体积|\n|稀释剂|\n|供试品溶液浓度|\n|对照（品）溶液浓度|\n|……|\n|定量方式",
-      "3.如适用，请提供有关物质自拟方法与药典方法检出结果对比。",
-      "4.研究但未订入标准的项目：参照中国药典格式提供各项目的分析方法。 ",
-      "5.质量标准各项目分析方法的建立均应具有依据。",
-      "6.有关物质分析方法筛选时，应在杂质谱分析全面的基础上，结合相关文献，科学选择分析方法。可以在原料药中加入限度浓度的已知杂质，证明拟定的有关物质分析方法可以单独分离目标杂质和/或使杂质与主成分有效分离；也可以采用含适量杂质的样品（如粗品或粗品母液、适当降解样品、稳定性末期样品等），对色谱条件进行比较优选研究，根据对杂质的检出能力选择适宜的色谱条件，建立有关物质分析方法。对于已有药典标准收载的，应结合原料药工艺路线分析药典标准分析方法的适用性，拟定的有关物质分析方法分离检出能力和杂质控制要求应不低于药典标准。", 
-      "7.同时，需关注稳定性考察期间总杂增加与含量下降的匹配性，如出现不匹配情况，需关注有关物质与含量测定分析方法的专属性、杂质校正因子影响等，必要时优化分析方法。"
+                
             ],
             requireFileList:[],
             requireList:[],
@@ -121,7 +115,8 @@ new Vue({
                 review_result_list: [],
                 report_require_list: [],
                 final_report: [{ report: { content: "" } }]
-            }
+            },
+            finalReport:''
 
         }
     },
@@ -313,7 +308,7 @@ new Vue({
             const file = this.fileList[0];
             console.log("file为",file.raw)
             formData.append('file', file.raw);
-            const classification = this.showUploadDialog?'eCTD':this.uploadForm.classification;
+            const classification = this.uploadDialogVisible?'eCTD':this.uploadForm.classification;
             const affect_range = this.uploadForm.affect_range;
             formData.append('classification', classification);
             formData.append('affect_range', affect_range);
@@ -331,8 +326,8 @@ new Vue({
                   this.fileList = [];
                   console.log("res.data为：",res.data)
                 //   this.getEctdList();
-                  this.handleFilter();
-                  if(this.uploadDialogVisible == true) this.handleECTDFilter();
+                  await this.handleFilter();
+                  if(this.uploadDialogVisible == true)  await this.handleECTDFilter();
                 }
                 else{
                     this.$message.error(res.data.msg);
@@ -620,14 +615,15 @@ new Vue({
         // 生成章节结论
         async fetchData() {
             const params = {
+                start_time:"",
+                doc_id:this.selectedDoc,
                 content:this.content,
-                content_section:this.selectedSection,
-                review_require_list:this.experiences
-
+                section_name:"",
+                section_id:this.selectedSection,
             }
             console.log("params:",params)
             try {
-                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/review_text`, {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/review_section`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -702,6 +698,87 @@ new Vue({
             }
         },
 
+        // 生成完整结论
+        async generateFinalReport() {
+            const params = {
+                doc_id:this.selectedDoc,
+            }
+            console.log("params:",params)
+            try {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/review_all_section`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
+                });
+                console.log("response:",response)
+                
+                const res = await response.json();
+                console.log("res:",res)
+
+                if (res.code === 200) {
+                    this.finalReport = res.data;
+                    console.log("this.report:",this.finalReport)
+                    console.log("text:",text)
+                }
+            } catch (error) {
+                console.error('生成结论失败:', error);
+                this.$message.error('结论生成失败，请重试');
+            }
+        },
+        //导出报告
+        async exportReport(){
+            const params = {
+                doc_id: this.selectedDoc,
+            };
+            console.log("导出参数:", params);
+            
+            try {
+                const response = await fetch(`http://${SERVER_HOST}:${SERVER_PORT}/export_report`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
+                });
+                
+                // 检查响应状态
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+        
+                // 获取文件名（从Content-Disposition头或默认）
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'report.docx'; // 默认文件名
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+                    if (filenameMatch && filenameMatch[1]) {
+                        filename = filenameMatch[1];
+                    }
+                }
+        
+                // 处理文件下载
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                
+                // 清理
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(downloadUrl);
+        
+                this.$message.success('报告导出成功');
+        
+            } catch (error) {
+                console.error('导出报告失败:', error);
+                this.$message.error('报告导出失败，请重试');
+            }
+
+        },
         // 启动打字机效果
         startTypewriterEffect() {
             this.charIndex = 0;

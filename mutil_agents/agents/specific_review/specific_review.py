@@ -105,6 +105,7 @@ class SpecificReview:
         data = {
             "content": review_state["content"],
             "review_result_list": review_state["review_result_list"],
+            "review_require_list":review_state["review_require_list"],
             "report_require": review_state["report_require_list"],
         }
         ans = ask_llm_by_prompt_file("mutil_agents/prompts/specific_review/final_report_generate_prompt.j2", data)
@@ -116,6 +117,7 @@ class SpecificReview:
             review_state["final_report"] = []
         review_state["final_report"].append(ans["response"])
         report_content = ""
+        print(review_state)
         for report in review_state["final_report"]:
             if report is None:
                 continue
@@ -124,6 +126,7 @@ class SpecificReview:
             if report["report"].get("content", None) is None:
                 continue
             report_content += report["report"]["content"]
+            print(report_content)
         review_state["final_report_content"] = report_content
 
         return review_state

@@ -3,8 +3,10 @@ import json
 import logging
 import time
 from tkinter import N
-from flask import Flask, Response, request, redirect, stream_with_context, url_for, render_template, flash
+from flask import Flask, Response, request, redirect, stream_with_context, url_for, render_template, flash, jsonify
 from flask_cors import CORS, cross_origin
+from flask_socketio import SocketIO, emit
+from sqlalchemy import text
 
 from db.dbutils.redis_conn import RedisDB
 from db.services.file_service import FileService
@@ -19,6 +21,7 @@ from utils.parser.ctd_parser import CTDPDFParser
 from utils.parser.parser_manager import CHUNK_BASE_PATH, ParserManager
 from mutil_agents.agent import specific_report_generationAgent_graph
 import os
+
 logger = logging.getLogger(__name__)
 
 eCTD_FILE_DIR = 'data/parser/eCTD/'
@@ -28,10 +31,20 @@ logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(leve
                     level=logging.INFO,
                     filename='log/server.log',
                     filemode='a')
+
 app = Flask(__name__, static_folder='templates')
-app.config['SECRET_KEY'] = 'your_secret_key'  # Used to protect the application from cross-site request forgery attacks
-# CORS(app, resources={r"/stream_logs": {"origins": "*"}})
-CORS(app)  # 允许所有跨域请求
+app.config['SECRET_KEY'] = 'your_secret_key'
+CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+
 @app.route('/upload_file', methods=['POST'])
 def upload_file():
     res_data = {
@@ -99,26 +112,62 @@ def delete_file(doc_id):
         return ResponseMessage(400, f'Failed to delete file {doc_id}', None).to_json()
     return ResponseMessage(200, f'File {doc_id} deleted successfully').to_json()
 
-@app.route('/get_file_by_class/<classfication>', methods=['GET', 'POST'])
-def get_file_by_class(classfication):
-    file_list = FileService().get_file_by_classification(classfication)
-    data_info = []
-    for item in file_list:
-        obj = {}
-        obj["doc_id"] = item.doc_id
-        obj["file_name"] = item.file_name
-        obj["parse_status"] = item.is_chunked
-        data_info.append(obj)
-    return ResponseMessage(200, 'Get file list successfully', data_info).to_json()
+@app.route('/get_file_by_class/<classification>', methods=['GET'])
+def get_file_by_class(classification):
+    try:
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 10))
+        offset = (page - 1) * limit
+        
+        # 获取总数
+        total = FileService().get_file_count_by_classification(classification)
+        
+        # 获取分页数据
+        files = FileService().get_files_by_classification(classification, offset, limit)
+        
+        return jsonify({
+            'code': 200,
+            'msg': '获取成功',
+            'data': {
+                'list': files,
+                'total': total
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'code': 500,
+            'msg': f'获取文件列表失败: {str(e)}',
+            'data': None
+        })
 
-@app.route('/get_file_classification', methods=['GET', 'POST'])
+@app.route('/get_file_classification', methods=['GET'])
 def get_file_classification():
-    ans =  FileService().get_file_classification()
-    list_info = []
-    for item in ans:
-        list_info.append(item[0])
-    return ResponseMessage(200, 'Get file classification successfully', list_info).to_json()
-CORS(app)  # 允许所有跨域请求
+    try:
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 10))
+        offset = (page - 1) * limit
+        
+        # 获取总数
+        total = FileService().get_file_count_by_classification('knowledge')
+        
+        # 获取分页数据
+        files = FileService().get_files_by_classification('knowledge', offset, limit)
+        
+        return jsonify({
+            'code': 200,
+            'msg': '获取成功',
+            'data': {
+                'list': files,
+                'total': total
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'code': 500,
+            'msg': f'获取文件列表失败: {str(e)}',
+            'data': None
+        })
+
 @app.route('/add_to_kd/<doc_id>', methods=['GET','POST'])
 def add_to_kd(doc_id):
     # Chunk splitting
@@ -336,87 +385,48 @@ def parse_ectd(doc_id):
 @app.route('/parse_ectd_stream/<doc_id>', methods=['GET', 'POST'])
 @cross_origin()
 def parse_ectd_stream(doc_id):
-    file_info = FileService().get_file_by_id(doc_id)
-    if file_info is None:
-        logging.error(f'File {doc_id} not found')
-        return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
-
-    if file_info.classification != 'eCTD':
-        logging.error(f'File {doc_id} is not an eCTD file')
-        return ResponseMessage(400, f'File {doc_id} is not an eCTD file', None).to_json()
-
-    file_path = file_info.file_path
-
-    def generate():
-        try:
-            parser = CTDPDFParser(file_path)
-            data = parser.parse()
-            total_sections = len(data.get("content", []))
-            cleaned_data = {"doc_id": doc_id, "content": []}
-            section_ids = []
-
-            for idx, item in enumerate(data.get("content", []), start=1):
-                if item.get("content", "") == "" or len(item.get("content", "")) < 70:
-                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"                
-                    continue
-
-                content = {
-                    "section_id": item.get("section_id", ""),
-                    "section_name": item.get("section_name", ""),
-                    "content": []
-                }
-                section_ids.append(item.get("section_id"))
-
-                llm_data = {"content": item.get("content")}
-                try:
-                    ans = ask_llm_by_prompt_file("mutil_agents/prompts/data_process/eCTD_clean_prompt.j2", llm_data)
-                except Exception as e:
-                    logging.error(f'Failed to clean file: {str(e)}')
-                    content["content"].append(copy.deepcopy(item.get("content", "")))
-                    cleaned_data["content"].append(copy.deepcopy(content))
-                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
-                    continue
-
-                if ans is None or ans["response"] is None:
-                    logging.error(f"clean error: ans is None")
-                    content["content"].append(copy.deepcopy(item.get("content", "")))
-                    cleaned_data["content"].append(copy.deepcopy(content))
-                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
-                    continue
-
-                if not isinstance(ans["response"], dict):
-                    content["content"].append(copy.deepcopy(item.get("content", "")))
-                    cleaned_data["content"].append(copy.deepcopy(content))
-                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
-                    continue
-
-                if ans["response"].get("content", None) is None:
-                    content["content"].append(copy.deepcopy(item.get("content", "")))
-                    cleaned_data["content"].append(copy.deepcopy(content))
-                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
-                    continue
-
-                if not isinstance(ans["response"]["content"], list):
-                    ans["response"]["content"] = [ans["response"]["content"]]
-
-                content["content"] = ans["response"]["content"]
-                cleaned_data["content"].append(copy.deepcopy(content))
-
-                yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
-
-            # Save cleaned data and update file information
-            redis_conn = RedisDB()
-            for item_content in cleaned_data.get("content", []):
-                print(item_content)
-                f'section_content+{doc_id}+{item.get("section_id")}'
-                redis_conn.set(f'section_content+{doc_id}+{item_content.get("section_id")}', json.dumps(item_content), None)
-
-            rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
-            FileService().update_file_chunk_by_id(doc_id, len(section_ids), ";".join(section_ids))
-        except Exception as e:
-            logging.error(f'Failed to parse file: {str(e)}')
-            yield json.dumps({"error": f"Failed to parse file: {str(e)}"}) + "\n"
-    return Response(stream_with_context(generate()), mimetype='text/event-stream')
+    try:
+        file_info = FileService().get_file_by_id(doc_id)
+        if file_info is None:
+            return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
+        
+        if not os.path.exists(file_info.file_path):
+            return ResponseMessage(400, f'File {file_info.file_path} not found', None).to_json()
+        
+        def generate():
+            try:
+                parser = CTDPDFParser(file_info.file_path)
+                total_sections = len(parser.sections)
+                
+                for i, section in enumerate(parser.sections, 1):
+                    if request.headers.get('Accept') == 'text/event-stream':
+                        yield f"data: {json.dumps({'cur_section': i, 'total_section': total_sections})}\n\n"
+                    else:
+                        socketio.emit('parse_progress', {
+                            'cur_section': i,
+                            'total_section': total_sections
+                        })
+                    
+                    time.sleep(0.1)  # 添加小延迟以便观察进度
+                
+                return ResponseMessage(200, 'Parse completed', None).to_json()
+            except Exception as e:
+                error_msg = f'Failed to parse file: {str(e)}'
+                logging.error(error_msg)
+                if request.headers.get('Accept') == 'text/event-stream':
+                    yield f"data: {json.dumps({'error': error_msg})}\n\n"
+                else:
+                    socketio.emit('parse_error', {'error': error_msg})
+                return ResponseMessage(400, error_msg, None).to_json()
+        
+        return Response(
+            stream_with_context(generate()),
+            mimetype='text/event-stream'
+        )
+    except Exception as e:
+        error_msg = f'Failed to parse file: {str(e)}'
+        logging.error(error_msg)
+        return ResponseMessage(400, error_msg, None).to_json()
 
 @app.route('/delete_ectd/<doc_id>', methods=['GET','POST'])
 @cross_origin()
@@ -454,16 +464,31 @@ def delete_ectd(doc_id):
 @app.route('/get_ectd_info_list', methods=['GET','POST'])
 @cross_origin()
 def get_ectd_info_list():
-    file_list = FileService().get_file_by_classification('ectd')
-    print(file_list)
-    data_info = []
-    for item in file_list:
-        obj = {}
-        obj["doc_id"] = item.doc_id
-        obj["file_name"] = item.file_name
-        obj["parse_status"] = item.is_chunked
-        data_info.append(obj)
-    return ResponseMessage(200, 'Get eCTD file list successfully', data_info).to_json()
+    try:
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 10))
+        offset = (page - 1) * limit
+        
+        # 获取总数
+        total = FileService().get_file_count_by_classification('eCTD')
+        
+        # 获取分页数据
+        files = FileService().get_files_by_classification('eCTD', offset, limit)
+        
+        return jsonify({
+            'code': 200,
+            'msg': '获取成功',
+            'data': {
+                'list': files,
+                'total': total
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'code': 500,
+            'msg': f'获取文件列表失败: {str(e)}',
+            'data': None
+        })
 
 @app.route('/get_ectd_sections/<doc_id>', methods=['GET','POST'])
 @cross_origin()
@@ -589,6 +614,6 @@ def stream_logs():
         mimetype="text/event-stream",  # 关键 MIME 类型
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
     )
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
