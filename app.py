@@ -3,10 +3,14 @@ import json
 import logging
 import time
 from tkinter import N
-from flask import Flask, Response, request, redirect, stream_with_context, url_for, render_template, flash, jsonify
+from click import DateTime
+from flask import Flask, Response, request, redirect, stream_with_context, url_for, render_template, flash, jsonify, send_file
 from flask_cors import CORS, cross_origin
 from flask_socketio import SocketIO, emit
 from sqlalchemy import text
+from datetime import datetime
+from urllib.parse import quote
+import platform
 
 from db.dbutils.redis_conn import RedisDB
 from db.services.file_service import FileService
@@ -21,6 +25,8 @@ from utils.parser.ctd_parser import CTDPDFParser
 from utils.parser.parser_manager import CHUNK_BASE_PATH, ParserManager
 from mutil_agents.agent import specific_report_generationAgent_graph
 import os
+from db.services.pharmacy_service import PharmacyService
+from db.services.qa_service import QAService
 
 logger = logging.getLogger(__name__)
 
@@ -120,10 +126,13 @@ def get_file_by_class(classification):
         offset = (page - 1) * limit
         
         # 获取总数
-        total = FileService().get_file_count_by_classification(classification)
-        
-        # 获取分页数据
-        files = FileService().get_files_by_classification(classification, offset, limit)
+        if classification == 'all':
+            # 获取所有文件，但过滤掉 eCTD 类型
+            total = FileService().get_all_file_count_except_ectd()
+            files = FileService().get_all_files_except_ectd(offset, limit)
+        else:
+            total = FileService().get_file_count_by_classification(classification)
+            files = FileService().get_files_by_classification(classification, offset, limit)
         
         return jsonify({
             'code': 200,
@@ -140,33 +149,13 @@ def get_file_by_class(classification):
             'data': None
         })
 
-@app.route('/get_file_classification', methods=['GET'])
+@app.route('/get_file_classification', methods=['GET', 'POST'])
 def get_file_classification():
-    try:
-        page = int(request.args.get('page', 1))
-        limit = int(request.args.get('limit', 10))
-        offset = (page - 1) * limit
-        
-        # 获取总数
-        total = FileService().get_file_count_by_classification('knowledge')
-        
-        # 获取分页数据
-        files = FileService().get_files_by_classification('knowledge', offset, limit)
-        
-        return jsonify({
-            'code': 200,
-            'msg': '获取成功',
-            'data': {
-                'list': files,
-                'total': total
-            }
-        })
-    except Exception as e:
-        return jsonify({
-            'code': 500,
-            'msg': f'获取文件列表失败: {str(e)}',
-            'data': None
-        })
+    ans =  FileService().get_file_classification()
+    list_info = []
+    for item in ans:
+        list_info.append(item[0])
+    return ResponseMessage(200, 'Get file classification successfully', list_info).to_json()
 
 @app.route('/add_to_kd/<doc_id>', methods=['GET','POST'])
 def add_to_kd(doc_id):
@@ -297,11 +286,13 @@ def review_all_section():
 @app.route('/export_report', methods=['GET','POST'])
 @cross_origin()
 def export_report():
-    doc_id = request.json.get('doc_id')
+    data = request.get_json()
+    doc_id = data.get('doc_id')
+    export_type = 'word'  # 强制只导出word
     if not doc_id:
         logging.error('No doc_id provided')
         return ResponseMessage(400, 'No doc_id provided', None).to_json()
-    info = ReportService().export_report(doc_id)
+    info = ReportService().export_report(doc_id, export_type)
     if info["status"] == 0:
         logging.error(f'Failed to export report: {info["message"]}')
         return ResponseMessage(400, f'Failed to export report: {info["message"]}', None).to_json()
@@ -309,20 +300,34 @@ def export_report():
     if not os.path.exists(file_path):
         logging.error(f'File {file_path} not found')
         return ResponseMessage(400, f'File {file_path} not found', None).to_json()
+
+    # 获取原始文件名，拼接"_报告.docx"
+    file_info = FileService().get_file_by_id(doc_id)
+    base_name = os.path.splitext(file_info.file_name)[0]
+    download_filename = f"{base_name}_报告.docx"
+    ascii_filename = download_filename.encode('ascii', 'ignore').decode('ascii') or 'report.docx'
+    utf8_filename = quote(download_filename)
+    content_disposition = f"attachment; filename={ascii_filename}; filename*=UTF-8''{utf8_filename}"
+
     def generate():
         with open(file_path, 'rb') as f:
-            while chunk := f.read(4096):
+            while True:
+                chunk = f.read(4096)
+                if not chunk:
+                    break
                 yield chunk
 
-    return Response(
+    mimetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    response = Response(
         generate(),
-        mimetype='application/octet-stream',
+        mimetype=mimetype,
         headers={
-            'Content-Disposition': f'attachment; filename="{os.path.basename(file_path)}"',
+            'Content-Disposition': content_disposition,
             'Cache-Control': 'no-cache'
         }
     )
-    
+    response.headers['Content-Length'] = str(os.path.getsize(file_path))
+    return response
 
 @app.route('/parse_ectd/<doc_id>', methods=['GET','POST'])
 @cross_origin()
@@ -385,48 +390,87 @@ def parse_ectd(doc_id):
 @app.route('/parse_ectd_stream/<doc_id>', methods=['GET', 'POST'])
 @cross_origin()
 def parse_ectd_stream(doc_id):
-    try:
-        file_info = FileService().get_file_by_id(doc_id)
-        if file_info is None:
-            return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
-        
-        if not os.path.exists(file_info.file_path):
-            return ResponseMessage(400, f'File {file_info.file_path} not found', None).to_json()
-        
-        def generate():
-            try:
-                parser = CTDPDFParser(file_info.file_path)
-                total_sections = len(parser.sections)
-                
-                for i, section in enumerate(parser.sections, 1):
-                    if request.headers.get('Accept') == 'text/event-stream':
-                        yield f"data: {json.dumps({'cur_section': i, 'total_section': total_sections})}\n\n"
-                    else:
-                        socketio.emit('parse_progress', {
-                            'cur_section': i,
-                            'total_section': total_sections
-                        })
-                    
-                    time.sleep(0.1)  # 添加小延迟以便观察进度
-                
-                return ResponseMessage(200, 'Parse completed', None).to_json()
-            except Exception as e:
-                error_msg = f'Failed to parse file: {str(e)}'
-                logging.error(error_msg)
-                if request.headers.get('Accept') == 'text/event-stream':
-                    yield f"data: {json.dumps({'error': error_msg})}\n\n"
-                else:
-                    socketio.emit('parse_error', {'error': error_msg})
-                return ResponseMessage(400, error_msg, None).to_json()
-        
-        return Response(
-            stream_with_context(generate()),
-            mimetype='text/event-stream'
-        )
-    except Exception as e:
-        error_msg = f'Failed to parse file: {str(e)}'
-        logging.error(error_msg)
-        return ResponseMessage(400, error_msg, None).to_json()
+    file_info = FileService().get_file_by_id(doc_id)
+    if file_info is None:
+        logging.error(f'File {doc_id} not found')
+        return ResponseMessage(400, f'File {doc_id} not found', None).to_json()
+
+    if file_info.classification != 'eCTD':
+        logging.error(f'File {doc_id} is not an eCTD file')
+        return ResponseMessage(400, f'File {doc_id} is not an eCTD file', None).to_json()
+
+    file_path = file_info.file_path
+
+    def generate():
+        try:
+            parser = CTDPDFParser(file_path)
+            data = parser.parse()
+            total_sections = len(data.get("content", []))
+            cleaned_data = {"doc_id": doc_id, "content": []}
+            section_ids = []
+
+            for idx, item in enumerate(data.get("content", []), start=1):
+                if item.get("content", "") == "" or len(item.get("content", "")) < 70:
+                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"                
+                    continue
+
+                content = {
+                    "section_id": item.get("section_id", ""),
+                    "section_name": item.get("section_name", ""),
+                    "content": []
+                }
+                section_ids.append(item.get("section_id"))
+
+                llm_data = {"content": item.get("content")}
+                try:
+                    ans = ask_llm_by_prompt_file("mutil_agents/prompts/data_process/eCTD_clean_prompt.j2", llm_data)
+                except Exception as e:
+                    logging.error(f'Failed to clean file: {str(e)}')
+                    content["content"].append(copy.deepcopy(item.get("content", "")))
+                    cleaned_data["content"].append(copy.deepcopy(content))
+                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
+                    continue
+
+                if ans is None or ans["response"] is None:
+                    logging.error(f"clean error: ans is None")
+                    content["content"].append(copy.deepcopy(item.get("content", "")))
+                    cleaned_data["content"].append(copy.deepcopy(content))
+                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
+                    continue
+
+                if not isinstance(ans["response"], dict):
+                    content["content"].append(copy.deepcopy(item.get("content", "")))
+                    cleaned_data["content"].append(copy.deepcopy(content))
+                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
+                    continue
+
+                if ans["response"].get("content", None) is None:
+                    content["content"].append(copy.deepcopy(item.get("content", "")))
+                    cleaned_data["content"].append(copy.deepcopy(content))
+                    yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
+                    continue
+
+                if not isinstance(ans["response"]["content"], list):
+                    ans["response"]["content"] = [ans["response"]["content"]]
+
+                content["content"] = ans["response"]["content"]
+                cleaned_data["content"].append(copy.deepcopy(content))
+
+                yield json.dumps({"cur_section": idx, "total_section": total_sections}) + "\n"
+
+            # Save cleaned data and update file information
+            redis_conn = RedisDB()
+            for item_content in cleaned_data.get("content", []):
+                print(item_content)
+                f'section_content+{doc_id}+{item.get("section_id")}'
+                redis_conn.set(f'section_content+{doc_id}+{item_content.get("section_id")}', json.dumps(item_content), None)
+
+            rewrite_json_file(f'{eCTD_FILE_DIR}{doc_id}.json', cleaned_data)
+            FileService().update_file_chunk_by_id(doc_id, len(section_ids), ";".join(section_ids))
+        except Exception as e:
+            logging.error(f'Failed to parse file: {str(e)}')
+            yield json.dumps({"error": f"Failed to parse file: {str(e)}"}) + "\n"
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 @app.route('/delete_ectd/<doc_id>', methods=['GET','POST'])
 @cross_origin()
@@ -504,7 +548,43 @@ def get_ectd_sections(doc_id):
     section_ids = section_str.split(";")
     return ResponseMessage(200, 'Get eCTD sections successfully', section_ids).to_json()
 
-@app.route('/get_report_content', methods=['GET','POST'])
+@app.route('/get_report', methods=['POST'])
+@cross_origin()
+def get_report():
+    try:
+        data = request.get_json()
+        doc_id = data.get('doc_id')
+        
+        if not doc_id:
+            return jsonify({
+                'code': 400,
+                'message': '文档ID不能为空'
+            })
+        
+        # 使用 ReportService 获取报告内容
+        report_service = ReportService()
+        result = report_service.get_report_content(doc_id)
+        
+        if result["status"] == 0:
+            return jsonify({
+                'code': 400,
+                'message': result["message"]
+            })
+            
+        return jsonify({
+            'code': 200,
+            'data': {
+                'content': result["data"]
+            }
+        })
+        
+    except Exception as e:
+        logging.error(f"获取报告失败: {str(e)}")
+        return jsonify({
+            'code': 500,
+            'message': f'获取报告失败: {str(e)}'
+        })
+@app.route('/get_report_by_section', methods=['GET','POST'])
 @cross_origin()
 def get_report_content():
     doc_id = request.json.get('doc_id')
@@ -522,19 +602,54 @@ def get_report_content():
 @app.route('/set_report_content', methods=['GET','POST'])
 @cross_origin()
 def set_report_content():
-    doc_id = request.json.get('doc_id')
-    section_id = request.json.get('section_id')
-    content = request.json.get('content')
-    if not doc_id or not section_id or not content:
-        logging.error('No doc_id, section_id or content provided')
-        return ResponseMessage(400, 'No doc_id, section_id or content provided', None).to_json()
-    redis_conn = RedisDB()
-    flag = redis_conn.set(f"review_content+{doc_id}+{section_id}", json.dumps(content), None)
-    if not flag:
-        logging.error(f'Failed to set content for doc_id: {doc_id}, section_id: {section_id}')
-        return ResponseMessage(400, f'Failed to set content for doc_id: {doc_id}, section_id: {section_id}', None).to_json()
-    return ResponseMessage(200, 'Set report content successfully', None).to_json()
+    try:
+        doc_id = request.json.get('doc_id')
+        section_id = request.json.get('section_id')
+        content = request.json.get('content')
+        
+        if not doc_id or not content:
+            return ResponseMessage(400, '参数不完整', None).to_json()
+            
+        redis_conn = RedisDB()
+        
+        if section_id == 'all':
+            # 更新完整报告
+            report_key = f"report+{doc_id}"
+            flag = redis_conn.set(report_key, content)
+        else:
+            # 更新章节报告
+            section_key = f"review_content+{doc_id}+{section_id}"
+            flag = redis_conn.set(section_key, content)
+            
+        if not flag:
+            return ResponseMessage(400, '保存失败', None).to_json()
+            
+        return ResponseMessage(200, '保存成功', None).to_json()
+        
+    except Exception as e:
+        logging.error(f'保存报告内容失败: {str(e)}')
+        return ResponseMessage(500, f'保存失败: {str(e)}', None).to_json()
 
+@app.route('/update_review_status', methods=['POST'])
+def update_review_status():
+    data = request.get_json()
+    doc_id = data.get('doc_id')
+    status = data.get('status')
+    
+    if not doc_id or status is None:
+        return jsonify({'code': 400, 'msg': '参数错误'})
+    
+    success, message = FileService().update_review_status(
+        doc_id, 
+        status, 
+        datetime.now() if status == 1 else None
+    )
+    
+    if success:
+        return jsonify({'code': 200, 'msg': '更新成功'})
+    else:
+        return jsonify({'code': 500, 'msg': message})
+    
 @app.route('/get_principle_content', methods=['GET','POST'])
 @cross_origin()
 def get_principle_content():
@@ -614,6 +729,220 @@ def stream_logs():
         mimetype="text/event-stream",  # 关键 MIME 类型
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
     )
+
+@app.route('/get_document_info', methods=['POST'])
+@cross_origin()
+def get_document_info():
+    try:
+        data = request.get_json()
+        doc_id = data.get('doc_id')
+        
+        if not doc_id:
+            return jsonify({
+                'code': 400,
+                'message': '文档ID不能为空'
+            })
+        
+        # 使用 FileService 获取文档信息
+        file_service = FileService()
+        doc_info, error = file_service.get_document_info(doc_id)
+        
+        if error:
+            return jsonify({
+                'code': 404,
+                'message': error
+            })
+            
+        return jsonify({
+            'code': 200,
+            'data': doc_info
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'code': 500,
+            'message': f'获取文档信息失败: {str(e)}'
+        })
+
+@app.route('/get_original_file_content', methods=['POST'])
+@cross_origin()
+def get_original_file_content():
+    try:
+        data = request.get_json()
+        doc_id = data.get('doc_id')
+        
+        if not doc_id:
+            return jsonify({
+                'code': 400,
+                'message': '文档ID不能为空'
+            })
+        
+        # 获取文件信息
+        file_info = FileService().get_file_by_id(doc_id)
+        if not file_info:
+            return jsonify({
+                'code': 404,
+                'message': '文件不存在'
+            })
+            
+        # 读取PDF文件内容
+        try:
+            import PyPDF2
+            with open(file_info.file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                content = []
+                for page in pdf_reader.pages:
+                    content.append(page.extract_text())
+                
+                return jsonify({
+                    'code': 200,
+                    'data': {
+                        'content': '\n\n'.join(content)
+                    }
+                })
+        except Exception as e:
+            logging.error(f'读取PDF文件失败: {str(e)}')
+            return jsonify({
+                'code': 500,
+                'message': f'读取PDF文件失败: {str(e)}'
+            })
+            
+    except Exception as e:
+        logging.error(f'获取原始文件内容失败: {str(e)}')
+        return jsonify({
+            'code': 500,
+            'message': f'获取原始文件内容失败: {str(e)}'
+        })
+
+@app.route('/pdf_view/<doc_id>')
+@cross_origin()
+def pdf_view(doc_id):
+    file_info = FileService().get_file_by_id(doc_id)
+    if not file_info or not os.path.exists(file_info.file_path):
+        return "PDF文件不存在", 404
+    return send_file(
+        file_info.file_path,
+        mimetype='application/pdf',
+        as_attachment=False,
+        download_name=os.path.basename(file_info.file_path)
+    )
+
+@app.route('/get_report_status/<doc_id>', methods=['GET'])
+@cross_origin()
+def get_report_status(doc_id):
+    """获取报告生成状态"""
+    try:
+        status = ReportService().get_report_status(doc_id)
+        return ResponseMessage(200, 'Success', status).to_json()
+    except Exception as e:
+        logging.error(f'获取报告状态失败: {str(e)}')
+        return ResponseMessage(500, f'获取报告状态失败: {str(e)}', None).to_json()
+
+@app.route('/pharmacy/add', methods=['POST'])
+def add_pharmacy():
+    data = request.get_json()
+    if not data or 'name' not in data:
+        return jsonify({'code': 400, 'msg': '药品名称必填'})
+    # 只保留模型字段
+    keys = ['name', 'prescription', 'characteristic', 'identification', 'inspection', 'content_determination', 'category', 'storage', 'preparation', 'specification']
+    info = {k: data.get(k) for k in keys}
+    success, result = PharmacyService().add_pharmacy(info)
+    if success:
+        return jsonify({'code': 200, 'msg': '添加成功', 'id': result})
+    else:
+        return jsonify({'code': 500, 'msg': f'添加失败: {result}'})
+
+@app.route('/pharmacy/<int:id>', methods=['GET'])
+def get_pharmacy(id):
+    obj = PharmacyService().get_pharmacy_by_id(id)
+    if obj:
+        return jsonify({'code': 200, 'data': obj.__dict__})
+    else:
+        return jsonify({'code': 404, 'msg': '未找到'})
+
+@app.route('/pharmacy/list', methods=['GET'])
+def list_pharmacy():
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', 20))
+    offset = (page - 1) * limit
+    objs = PharmacyService().list_pharmacy(offset, limit)
+    total = PharmacyService().count_pharmacy()
+    data = [o.__dict__ for o in objs]
+    for d in data:
+        d.pop('_sa_instance_state', None)
+    return jsonify({'code': 200, 'data': {'list': data, 'total': total}})
+
+@app.route('/pharmacy/update/<int:id>', methods=['POST'])
+def update_pharmacy(id):
+    data = request.get_json()
+    keys = ['name', 'prescription', 'characteristic', 'identification', 'inspection', 'content_determination', 'category', 'storage', 'preparation', 'specification']
+    update_dict = {k: data.get(k) for k in keys if k in data}
+    success = PharmacyService().update_pharmacy(id, update_dict)
+    if success:
+        return jsonify({'code': 200, 'msg': '更新成功'})
+    else:
+        return jsonify({'code': 500, 'msg': '更新失败'})
+
+@app.route('/pharmacy/delete/<int:id>', methods=['POST'])
+def delete_pharmacy(id):
+    success = PharmacyService().delete_pharmacy(id)
+    if success:
+        return jsonify({'code': 200, 'msg': '删除成功'})
+    else:
+        return jsonify({'code': 500, 'msg': '删除失败'})
+
+@app.route('/qa/add', methods=['POST'])
+def add_qa():
+    data = request.get_json()
+    if not data or 'category' not in data or 'question' not in data:
+        return jsonify({'code': 400, 'msg': '问题类别和问题必填'})
+    keys = ['category', 'question', 'answer']
+    info = {k: data.get(k) for k in keys}
+    success, result = QAService().add_qa(info)
+    if success:
+        return jsonify({'code': 200, 'msg': '添加成功', 'id': result})
+    else:
+        return jsonify({'code': 500, 'msg': f'添加失败: {result}'})
+
+@app.route('/qa/<int:id>', methods=['GET'])
+def get_qa(id):
+    obj = QAService().get_qa_by_id(id)
+    if obj:
+        return jsonify({'code': 200, 'data': obj.__dict__})
+    else:
+        return jsonify({'code': 404, 'msg': '未找到'})
+
+@app.route('/qa/list', methods=['GET'])
+def list_qa():
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', 20))
+    offset = (page - 1) * limit
+    category = request.args.get('category')
+    objs = QAService().list_qa(category, offset, limit)
+    total = QAService().count_qa(category)
+    data = [o.__dict__ for o in objs]
+    for d in data:
+        d.pop('_sa_instance_state', None)
+    return jsonify({'code': 200, 'data': {'list': data, 'total': total}})
+
+@app.route('/qa/update/<int:id>', methods=['POST'])
+def update_qa(id):
+    data = request.get_json()
+    keys = ['category', 'question', 'answer']
+    update_dict = {k: data.get(k) for k in keys if k in data}
+    success = QAService().update_qa(id, update_dict)
+    if success:
+        return jsonify({'code': 200, 'msg': '更新成功'})
+    else:
+        return jsonify({'code': 500, 'msg': '更新失败'})
+
+@app.route('/qa/delete/<int:id>', methods=['POST'])
+def delete_qa(id):
+    success = QAService().delete_qa(id)
+    if success:
+        return jsonify({'code': 200, 'msg': '删除成功'})
+    else:
+        return jsonify({'code': 500, 'msg': '删除失败'})
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)

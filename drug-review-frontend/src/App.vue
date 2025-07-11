@@ -1,13 +1,19 @@
 <template>
   <div id="app">
       <router-view></router-view>
+      <FloatingSearch />
   </div>
 </template>
 
 
 <script>
+import FloatingSearch from '@/components/FloatingSearch.vue'
+
 export default {
   name: 'App',
+  components: {
+    FloatingSearch
+  }
 }
 </script>
 

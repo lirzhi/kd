@@ -1,71 +1,99 @@
 import Vue from 'vue'
-import VueRouter from 'vue-router'
-import Main from '../views/Main.vue'
-import ReportManagement from '../views/Report.vue'
-import RequirementsManagement from '../views/Requirements.vue'
-import CTD from '../views/CTD.vue'
-import KnowledgeManagement from '../views/Knowledge.vue'
+import Router from 'vue-router'
 
-// 确保VueRouter只初始化一次
-if (!Vue.prototype.$router) {
-  Vue.use(VueRouter)
-}
+Vue.use(Router)
 
-let OriginPush = VueRouter.prototype.push;
-let OriginReplace = VueRouter.prototype.replace;
-VueRouter.prototype.push = function (location, resolve, reject) {
-    if (resolve && reject) {
-        OriginPush.call(this, location, resolve, reject);
-    }
-    else {
-        OriginPush.call(this, location, () => { }, () => { });
-    }
-}
-VueRouter.prototype.replace = function (location, resolve, reject) {
-    if (resolve && reject) {
-        OriginReplace.call(this, location, resolve, reject);
-    }
-    else {
-        OriginReplace.call(this, location, () => { }, () => { });
-    }
-}
+import Layout from '@/layout'
 
-const routes = [
+export const constantRoutes = [
+  {
+    path: '/login',
+    component: () => import('@/views/login/index'),
+    hidden: true
+  },
   {
     path: '/',
-    component: Main,
-    redirect: '/report',
+    component: Layout,
+    redirect: '/knowledge/laws',
     children: [
       {
-        path: '/report',
-        name: 'ReportManagement',
-        component: ReportManagement,
-        meta: { title: '审评报告' }
+        path: 'knowledge',
+        component: { render: h => h('router-view') },
+        meta: { title: '知识库管理', icon: 'el-icon-s-management' },
+        children: [
+          {
+            path: 'laws',
+            name: 'Laws',
+            component: () => import('@/views/knowledge/Laws'),
+            meta: { title: '法律法规' }
+          },
+          {
+            path: 'guidence',
+            name: 'Guidence',
+            component: () => import('@/views/knowledge/Guidence'),
+            meta: { title: '指导原则' }
+          },
+          {
+            path: 'regulations',
+            name: 'Regulations',
+            component: () => import('@/views/knowledge/Regulations'),
+            meta: { title: '制度规范' }
+          },
+          {
+            path: 'qa',
+            name: 'QA',
+            component: () => import('@/views/knowledge/QA'),
+            meta: { title: '问答数据' }
+          },
+          {
+            path: 'pharmacy',
+            name: 'Pharmacy',
+            component: () => import('@/views/knowledge/Pharmacy'),
+            meta: { title: '药典数据' }
+          },
+          {
+            path: 'rules',
+            name: 'Rules',
+            component: () => import('@/views/knowledge/Rules'),
+            meta: { title: '审评规则' }
+          }
+        ]
       },
       {
-        path: '/requirements',
-        name: 'RequirementsManagement',
-        component: RequirementsManagement,
-        meta: { title: '审评要求' }
-      },
-      {
-        path: '/ctd',
-        name: 'CTD',
-        component: CTD,
-        meta: { title: 'CTD管理' }
-      },
-      {
-        path: '/knowledge',
-        name: 'KnowledgeManagement',
-        component: KnowledgeManagement,
-        meta: { title: '知识库管理' }
+        path: 'project',
+        component: { render: h => h('router-view') },
+        meta: { title: '审评项目管理', icon: 'el-icon-s-order' },
+        children: [
+          {
+            path: 'documents',
+            name: 'Documents',
+            component: () => import('@/views/project/Documents'),
+            meta: { title: '审评资料' }
+          },
+          {
+            path: 'report/:id',
+            name: 'Report',
+            component: () => import('@/views/project/Report'),
+            meta: { title: '审评报告' },
+            hidden: true
+          }
+        ]
       }
     ]
   }
 ]
 
-const router = new VueRouter({
-  routes
+const createRouter = () => new Router({
+  mode: 'history',
+  scrollBehavior: () => ({ y: 0 }),
+  routes: constantRoutes
 })
+
+const router = createRouter()
+
+export function resetRouter() {
+  const newRouter = createRouter()
+  router.matcher = newRouter.matcher
+}
 
 export default router 

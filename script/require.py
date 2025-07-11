@@ -43,7 +43,7 @@ def process_json_data(json_data):
 
 def main():
     # JSON文件路径
-    json_file_path = "./data/raw_data/require.json"
+    json_file_path = "../data/raw_data/require.json"
     
     # 读取JSON文件
     json_data = read_json_file(json_file_path)

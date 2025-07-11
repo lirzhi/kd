@@ -199,7 +199,7 @@ export default {
     async handleECTDFilter() {
       this.loading = true
       try {
-        const response = await this.$http.get('/api/get_file_by_class/eCTD', {
+        const response = await this.$http.get('/api/get_file_by_class/CTD', {
           params: {
             page: this.listQuery.page,
             limit: this.listQuery.limit
@@ -208,7 +208,7 @@ export default {
         if (response.data.code === 200) {
           this.filteredECTDList = response.data.data.list.map(item => ({
             ...item,
-            doc_classification: "eCTD"
+            doc_classification: "CTD"
           }))
           this.total = response.data.data.total
         }

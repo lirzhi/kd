@@ -57,6 +57,9 @@ class DocxParser:
             chunks.append(current_chunk)
 
         # 处理表格和图片，分别保存
+        if not chunks:
+            return []  # 没有内容直接返回空
+
         image_dir = os.path.join(DOCX_IMAGE_PATH)
         if not os.path.exists(image_dir):
             os.makedirs(image_dir)
@@ -67,9 +70,11 @@ class DocxParser:
 
         # 遍历文档中的表格和图片，将它们添加到相应的chunk中
         for i, table in enumerate(doc.tables):
-            table_chunk_index = min((chunk['start_pos'], idx)
-                                    for idx, chunk in enumerate(chunks)
-                                    if chunk['start_pos'] is not None)[1]
+            # 只分配给有 start_pos 的 chunk
+            valid_chunks = [(chunk['start_pos'], idx) for idx, chunk in enumerate(chunks) if chunk.get('start_pos') is not None]
+            if not valid_chunks:
+                continue
+            table_chunk_index = min(valid_chunks)[1]
             chunks[table_chunk_index]['tables'].append({
                 'index': i,
                 'text': " ".join([cell.text for row in table.rows for cell in row.cells])
@@ -81,9 +86,10 @@ class DocxParser:
                 image_path = os.path.join(image_dir, f'image_{i}.png')
                 with open(image_path, 'wb') as img_file:
                     img_file.write(image)
-                image_chunk_index = min((chunk['start_pos'], idx)
-                                        for idx, chunk in enumerate(chunks)
-                                        if chunk['start_pos'] is not None)[1]
+                valid_chunks = [(chunk['start_pos'], idx) for idx, chunk in enumerate(chunks) if chunk.get('start_pos') is not None]
+                if not valid_chunks:
+                    continue
+                image_chunk_index = min(valid_chunks)[1]
                 chunks[image_chunk_index]['image_paths'].append(image_path)
         return chunks
    

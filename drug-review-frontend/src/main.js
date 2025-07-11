@@ -3,7 +3,7 @@ import App from './App.vue'
 import ElementUI from 'element-ui'
 import 'element-ui/lib/theme-chalk/index.css'
 import axios from 'axios'
-import {marked} from 'marked'
+import marked from 'marked'
 import router from './router'
 
 Vue.use(ElementUI)
@@ -46,12 +46,13 @@ Vue.prototype.$http = axios
 // 配置marked
 marked.setOptions({
   breaks: true,
-  sanitize: false,
-  mangle: false,
-  headerIds: false,
   gfm: true,
+  headerIds: false,
+  mangle: false,
+  sanitize: false,
   smartLists: true
 })
+
 Vue.prototype.$marked = marked
 
 new Vue({

@@ -1,9 +1,12 @@
-const { defineConfig } = require('@vue/cli-service')
-
-module.exports = defineConfig({
-  transpileDependencies: true,
+module.exports = {
+  publicPath: process.env.NODE_ENV === 'production' ? '/' : '/',
+  outputDir: 'dist',
+  assetsDir: 'static',
+  lintOnSave: process.env.NODE_ENV === 'development',
+  productionSourceMap: false,
   devServer: {
     port: 8080,
+    open: true,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:5000',
@@ -14,16 +17,16 @@ module.exports = defineConfig({
       },
       '/socket.io': {
         target: 'http://127.0.0.1:5000',
-        ws: true,
-        changeOrigin: true
+        changeOrigin: true,
+        ws: true
       }
     }
   },
   css: {
     loaderOptions: {
       sass: {
-        prependData: `@import "@/styles/variables.scss";`
+        additionalData: `@import "@/styles/variables.scss";`
       }
     }
   }
-})
+}

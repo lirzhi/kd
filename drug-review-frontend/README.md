@@ -1,24 +1,115 @@
-# drug-review-frontend
+# 药品审评系统前端
 
-## Project setup
-```
-yarn install
+## 项目介绍
+药品审评系统是一个基于Vue.js和Element UI开发的现代化Web应用，用于管理药品审评过程中的文档和知识库。
+
+## 功能特点
+- 审评项目管理
+  - 文档上传和管理
+  - 自动解析CTD格式文档
+  - 生成审评报告
+- 知识库管理
+  - 知识条目管理
+  - 分类管理
+  - 全文检索
+- **全局悬浮搜索球**
+  - 在所有页面显示可拖拽的搜索球
+  - 支持关键词智能搜索
+  - 展示搜索结果和参考文档
+  - 位置自动保存和恢复
+
+## 技术栈
+- Vue.js 2.x
+- Vue Router
+- Element UI
+- Axios
+- Marked (Markdown解析)
+
+## 开发环境要求
+- Node.js >= 12.x
+- npm >= 6.x
+
+## 安装和运行
+1. 安装依赖
+```bash
+npm install
 ```
 
-### Compiles and hot-reloads for development
-```
-yarn serve
-```
-
-### Compiles and minifies for production
-```
-yarn build
+2. 开发环境运行
+```bash
+npm run serve
 ```
 
-### Lints and fixes files
-```
-yarn lint
+3. 生产环境构建
+```bash
+npm run build
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+## 项目结构
+```
+src/
+  ├── api/          # API接口
+  ├── assets/       # 静态资源
+  ├── components/   # 公共组件
+  ├── layout/       # 布局组件
+  ├── router/       # 路由配置
+  ├── utils/        # 工具函数
+  ├── views/        # 页面组件
+  ├── App.vue       # 根组件
+  └── main.js       # 入口文件
+```
+
+## 环境配置
+- 开发环境: `.env.development`
+- 生产环境: `.env.production`
+
+## 浏览器支持
+- Chrome
+- Firefox
+- Safari
+- Edge
+
+## 贡献指南
+1. Fork 本仓库
+2. 创建新的功能分支
+3. 提交代码
+4. 创建 Pull Request
+
+## 许可证
+MIT
+
+## 悬浮搜索球功能详解
+
+### 核心特性
+1. **全局显示**: 在所有页面都会显示一个悬浮搜索球
+2. **可拖拽定位**: 鼠标可以拖拽悬浮球到任意位置
+3. **位置记忆**: 悬浮球位置会自动保存到本地存储
+4. **点击展开**: 点击悬浮球展开搜索界面
+5. **外部关闭**: 点击悬浮球外区域自动关闭搜索界面
+6. **智能搜索**: 支持关键词搜索，展示搜索结果和参考文档
+
+### 使用方法
+1. **拖拽悬浮球**: 在悬浮球未展开时，可以拖拽到任意位置
+2. **展开搜索**: 点击悬浮球展开搜索界面
+3. **执行搜索**: 输入关键词后按回车或点击搜索按钮
+4. **查看结果**: 搜索结果会显示在展开的界面中
+5. **关闭界面**: 点击悬浮球外区域自动关闭
+
+### 技术实现
+- 基于 Vue 2.x + Element UI
+- 支持拖拽定位（mousedown/mousemove/mouseup事件）
+- 本地存储位置信息（localStorage）
+- 响应式布局设计
+- 优雅的动画效果
+
+### 组件说明
+
+#### FloatingSearch.vue
+全局悬浮搜索组件，提供以下功能：
+- 可拖拽定位
+- 搜索界面展开/收起
+- 搜索结果展示
+- 参考文档管理
+
+### 配置说明
+悬浮球的位置信息会自动保存到浏览器的 localStorage 中，键名为 `floatingSearchPosition`。

@@ -1,86 +1,55 @@
 <template>
-    <el-container class="main-container">
-        <el-header height="60px">
-            <common-header></common-header>
-        </el-header>
-        <el-container class="main-content">
-            <el-aside :width="asideWidth">
-                <common-aside></common-aside>
-            </el-aside>
-            <el-main>
-                <router-view></router-view>
+    <el-container class="app-wrapper">
+        <el-aside width="240px" class="sidebar-container">
+            <common-aside />
+        </el-aside>
+
+        <el-container class="main-container">
+            <common-header />
+
+            <el-main class="app-main">
+                <router-view />
             </el-main>
         </el-container>
     </el-container>
 </template>
 
-
 <script>
-import CommonAside from "@/components/CommonAside.vue";
-import CommonHeader from '@/components/CommonHeader.vue';
+import CommonAside from '@/components/CommonAside.vue'
+import CommonHeader from '@/components/CommonHeader.vue'
 
 export default {
     name: 'MainPage',
     components: {
         CommonAside,
-        CommonHeader,
-    },
-    data() {
-        return {
-            isCollapse: false
-        };
-    },
-    computed: {
-        asideWidth() {
-            return this.isCollapse ? '64px' : '200px'
-        }
-    },
-    methods: {},
-};
-
+        CommonHeader
+    }
+}
 </script>
 
-<style scoped>
-.main-container {
+<style lang="scss" scoped>
+.app-wrapper {
     height: 100vh;
-    background-color: #f0f2f5;
+    width: 100%;
 }
 
-.main-content {
-    height: calc(100vh - 60px);
+.sidebar-container {
+    background-color: #304156;
+    height: 100%;
+    transition: width 0.28s;
     overflow: hidden;
 }
 
-.el-header {
-    padding: 0;
-    box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-    z-index: 10;
+.main-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
-.el-aside {
-    background-color: #001529;
-    transition: width 0.3s;
-    overflow: hidden;
-}
-
-.el-main {
+.app-main {
     padding: 20px;
-    overflow-y: auto;
     background-color: #f0f2f5;
-}
-
-/* 自定义滚动条样式 */
-.el-main::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-
-.el-main::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 3px;
-}
-
-.el-main::-webkit-scrollbar-track {
-    background: #f0f2f5;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
 }
 </style>
